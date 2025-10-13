@@ -26,11 +26,12 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            overflow: hidden; 
+            overflow: hidden;
             
             /* Fundo com a imagem da cidade (image_7c385a.jpg) */
-            background-color: var(--p5-black); 
-            background-image: url('background.jpg');
+            background-color: var(--p5-black);
+            /* Importante: Estas imagens (background.jpg e joker_icon.png) devem estar na raiz do seu projeto! */
+            background-image: url('background.jpg'); 
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -44,7 +45,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); 
+            background-color: rgba(0, 0, 0, 0.7);
             z-index: 5;
         }
 
@@ -53,7 +54,7 @@
             width: 90%;
             max-width: 400px;
             height: 95%;
-            background-color: var(--p5-red); 
+            background-color: var(--p5-red);
             z-index: 10;
             display: flex;
             flex-direction: column;
@@ -77,16 +78,13 @@
             font-size: 1.8em;
             letter-spacing: 2px;
             text-shadow: 1px 1px 0 var(--p5-red);
-            /* Sem o 'M' grande, o padding é menor */
-            padding-left: 10px; 
+            padding-left: 10px;
         }
         
-        /* O seletor ::before que continha o 'M' foi removido aqui. */
-
         /* Área de Mensagens (Vermelho P5) */
         .chat-display {
             flex-grow: 1;
-            background-color: var(--p5-red); 
+            background-color: var(--p5-red);
             padding: 10px;
             overflow-y: auto;
             border-bottom: 5px solid var(--p5-white);
@@ -102,16 +100,16 @@
 
         /* Ícone do Bot (Joker) - TAMANHO AUMENTADO */
         .bot-icon {
-            width: 60px; 
+            width: 60px;
             height: 60px;
             background-color: var(--p5-black);
             border: 2px solid var(--p5-white);
             margin-right: 10px;
             flex-shrink: 0;
-            background-image: url('joker_icon.png'); 
+            background-image: url('joker_icon.png');
             background-size: cover;
-            filter: grayscale(100%); 
-            clip-path: polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%); 
+            filter: grayscale(100%);
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%);
         }
 
         /* Balão do Bot */
@@ -119,7 +117,7 @@
             background-color: var(--p5-black);
             color: var(--p5-white);
             padding: 8px 15px;
-            max-width: 70%; 
+            max-width: 70%;
             font-size: 1em;
             clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
             position: relative;
@@ -143,7 +141,7 @@
         /* Área de Input */
         .chat-input {
             padding: 10px;
-            background-color: var(--p5-red); 
+            background-color: var(--p5-red);
             border-top: 5px solid var(--p5-white);
             display: flex;
         }
@@ -195,9 +193,10 @@
     </div>
 
     <script>
-        // ⚠️ IMPORTANTE: Use 'http://127.0.0.1:5000' para teste local.
-        const API_BASE_URL = 'http://127.0.0.1:5000'; 
-        
+        // ⬅️ CORREÇÃO CRÍTICA PARA O RENDER: Usamos a rota relativa (base vazia)
+        const API_BASE_URL = '';
+        const API_ENDPOINT = '/web_router'; // Sua rota Flask
+
         const chatDisplay = document.getElementById('chat-display');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
@@ -245,13 +244,13 @@
         // --- FUNÇÃO DE LÓGICA CORE (Chama a Rota Unificada do Python) ---
 
         async function processUserMessage(message) {
-            const endpoint = 'web_router';
             const payload = { message: message };
 
             showLoading();
             
             try {
-                const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
+                // A chamada agora usa a rota relativa, que funciona no Render
+                const response = await fetch(API_ENDPOINT, { 
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -261,7 +260,6 @@
 
                 const data = await response.json();
                 
-                // O Python (Gemini) já retorna o texto final formatado
                 if (response.status === 200 && data.status === 'success') {
                     return data.message;
                 } else {
