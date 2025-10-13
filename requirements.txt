@@ -1,7 +1,7 @@
 flask
-google-genai>=0.11.0
 flask-cors
 twilio
 gunicorn
+google-genai>=0.11.0 
 
 
