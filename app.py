@@ -3,13 +3,13 @@ import os
 import json
 from google import genai
 from google.genai.errors import APIError
-from google.genai.types import GenerateContentConfig 
-from flask import Flask, request, jsonify, send_file 
+from google.genai.types import GenerateContentConfig
+from flask import Flask, request, jsonify, send_file
 from twilio.twiml.messaging_response import MessagingResponse
-from flask_cors import CORS 
+from flask_cors import CORS
 
 # --- VARIÁVEIS DE CONFIGURAÇÃO E CHAVE API ---
-API_KEY_GEMINI = os.environ.get('GEMINI_API_KEY') 
+API_KEY_GEMINI = os.environ.get('GEMINI_API_KEY')
 DATABASE_NAME = 'BDchatbot.db'
 
 # --- 1. SCRIPT SQL COMPLETO ---
@@ -105,7 +105,7 @@ INSERT OR IGNORE INTO Historico_Academico (fk_id_aluno, fk_id_disciplina, Nota, 
 
 # --- INICIALIZAÇÃO DO FLASK E GEMINI ---
 app = Flask(__name__)
-CORS(app) 
+CORS(app)
 client = None
 
 # Inicializa o cliente Gemini
@@ -127,18 +127,18 @@ def init_db():
         conn = sqlite3.connect(DATABASE_NAME)
         cursor = conn.cursor()
         cursor.execute("PRAGMA foreign_keys = ON;")
-        cursor.executescript(SQL_SCRIPT_CONTENT) 
+        cursor.executescript(SQL_SCRIPT_CONTENT)
         conn.commit()
         conn.close()
         print(f"✅ Banco de dados '{DATABASE_NAME}' verificado e pronto para uso.")
     except sqlite3.Error as e:
         print(f"❌ Erro na inicialização do banco de dados: {e}")
-        exit() 
+        exit()
 
 def get_db_connection():
     """Retorna uma nova conexão ao banco de dados para uma requisição."""
     conn = sqlite3.connect(DATABASE_NAME)
-    conn.row_factory = sqlite3.Row 
+    conn.row_factory = sqlite3.Row
     return conn
 
 # --- 3. FUNÇÕES DE OPERAÇÃO (LÓGICA CORE) ---
@@ -258,7 +258,7 @@ def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
             model='gemini-2.5-flash',
             contents=[prompt_ferramenta],
             # 💡 CORREÇÃO APLICADA: Uso de 'config' para resolver o erro 'tools' no Render
-            config=GenerateContentConfig(tools=list(TOOLS.values()))  
+            config=GenerateContentConfig(tools=list(TOOLS.values()))
         )
     except Exception as e:
         # Erro de 'tools' não deve ocorrer na hospedagem, mas é bom ter uma mensagem genérica de erro aqui.
@@ -284,7 +284,7 @@ def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
 
             # 4. Envia o resultado da execução de volta ao Gemini
             segundo_prompt = [
-                response, 
+                response,
                 genai.types.Part.from_function_response(
                     name=func_name,
                     response=function_response_data
@@ -307,7 +307,7 @@ def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
 def serve_index():
     """Serva o arquivo index.html principal, que está na raiz."""
     # ⬅️ Faz o Flask enviar o arquivo index.html da pasta raiz
-    return send_file('joker_bot.html') 
+    return send_file('joker_bot.html')
 
 # --- 5. ROTA PRINCIPAL PARA O FRONT-END WEB ---
 @app.route('/web_router', methods=['POST'])
@@ -345,7 +345,7 @@ def handle_whatsapp_message():
     message_text = request.form.get('Body')
     
     if not message_text:
-        return str(MessagingResponse()), 200 
+        return str(MessagingResponse()), 200
 
     print(f"💬 Mensagem recebida da Twilio: {message_text}")
 
@@ -363,4 +363,3 @@ init_db() 
 
 if __name__ == '__main__':
     app.run(debug=True)
-
