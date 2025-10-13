@@ -306,7 +306,7 @@ def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
 def serve_index():
     """Serva o arquivo index.html principal, que está na raiz."""
     # ⬅️ Faz o Flask enviar o arquivo index.html da pasta raiz
-    return send_file('index.html') 
+    return send_file('joker_bot.html') 
 
 # --- 5. ROTA PRINCIPAL PARA O FRONT-END WEB ---
 @app.route('/web_router', methods=['POST'])
@@ -363,3 +363,4 @@ init_db()
 if __name__ == '__main__':
 
     app.run(debug=True)
+
