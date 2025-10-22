@@ -49,11 +49,11 @@
             z-index: -1;
         }
 
-        /* 🟢 CORREÇÃO CRÍTICA AQUI: */
+        /* 🟢 CORREÇÃO CRÍTICA AQUI: Define dimensões fixas */
         #main-app-container {
-            /* Garante uma largura e altura mínima para não colapsar */
+            /* Garante uma largura e altura para evitar o colapso */
             width: 90%;
-            max-width: 600px;
+            max-width: 600px; /* Largura máxima boa para um chat */
             height: 90vh; 
             max-height: 800px;
             
@@ -63,10 +63,9 @@
             
             position: relative; 
             z-index: 100;
-            /* Garante que o container interno use Flexbox corretamente */
             display: flex; 
             flex-direction: column;
-            overflow: hidden; /* Oculta barras de rolagem desnecessárias */
+            overflow: hidden; 
         }
         
         /* --- TELA DE LOGIN --- */
@@ -90,7 +89,7 @@
             box-sizing: border-box; 
         }
         
-        /* Fundo da Imagem do JOKER APENAS para a tela de login */
+        /* Fundo da Imagem do JOKER */
         #login-screen::before {
             content: '';
             position: absolute;
@@ -98,7 +97,6 @@
             left: 0;
             width: 100%;
             height: 100%;
-            /* IMAGEM joker_background.jpg */
             background-image: url('static/joker_background.jpg'); 
             /* ✅ Correção do Fundo: Garante que a imagem inteira seja visível */
             background-size: contain; 
@@ -163,10 +161,9 @@
         #chat-screen {
             display: none; 
             flex-direction: column;
-            /* 🟢 CORREÇÃO: Ocupa todo o espaço do Flexbox (90vh) */
-            flex-grow: 1; 
-            width: 100%;
-            height: 100%; /* Isso garante que ele use 100% do pai que é 90vh */
+            flex-grow: 1; /* Ocupa o espaço vertical restante */
+            width: 100%; /* ✅ CORREÇÃO: Garante 100% da largura do contêiner pai */
+            height: 100%; 
             z-index: 5;
             
             position: absolute; 
@@ -183,11 +180,15 @@
             font-size: 1.2em;
             font-weight: bold;
             text-align: center;
-            /* 🟢 CORREÇÃO: Garante que o conteúdo (bem-vindo e botão) não colapsem */
             min-height: 50px; 
             display: flex;
             justify-content: space-between;
             align-items: center;
+            
+            /* Garante que o texto de boas-vindas não colapse tanto */
+            white-space: nowrap; 
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         #logout-button {
@@ -198,6 +199,7 @@
             cursor: pointer;
             font-size: 0.8em;
             white-space: nowrap;
+            flex-shrink: 0; /* Impede que o botão encolha */
         }
 
         #chat-box {
@@ -205,7 +207,7 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            flex-grow: 1; /* Permite que a caixa de chat cresça e use o espaço restante */
+            flex-grow: 1; /* Permite que a caixa de chat use o espaço restante */
         }
 
         .message {
@@ -333,6 +335,7 @@
         userData = {};
         localStorage.removeItem('user_data');
         
+        // Limpa e inicializa a caixa de chat
         chatBox.innerHTML = `
             <div class="message bot-message">
                 Bem-vindo(a). Sou o Joker. Como posso ajudá-lo(a) a passar de ano?
@@ -358,6 +361,7 @@
         loginError.textContent = 'RA ou Senha inválidos.'; 
 
         try {
+            // Rota /login no app.py (precisa ser adicionada)
             const response = await fetch('/login', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -478,5 +482,6 @@
 </script>
 </body>
 </html>
+
 
 
