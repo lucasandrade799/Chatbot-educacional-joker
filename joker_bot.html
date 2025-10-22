@@ -19,22 +19,27 @@
             margin: 0;
             font-family: var(--font-main);
             color: var(--color-white);
-            background-color: var(--color-black);
-            overflow: hidden; /* Evita barras de rolagem desnecessárias */
+            background-color: var(--color-black); 
+            overflow: hidden;
+            
+            /* 💥 NOVO: Fundo da Imagem da Cidade P&B (Fundo Padrão para o CHAT) */
+            background-image: url('static/background.jpg'); 
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            
         }
-
-        .background-container {
+        
+        /* Container para aplicar a opacidade em cima da imagem */
+        body::before {
+            content: '';
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            /* 💥 AQUI ESTÁ A MUDANÇA: APONTANDO PARA A PASTA 'static' */
-            background-image: url('static/joker_background.jpg'); 
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            opacity: 0.2; /* Tonalidade escura para não interferir no texto */
+            background-color: rgba(0, 0, 0, 0.7); /* Adiciona uma camada escura */
             z-index: -1;
         }
 
@@ -45,10 +50,12 @@
             height: 100%;
             padding: 20px;
             box-sizing: border-box;
+            position: relative;
+            z-index: 10; /* Garante que o conteúdo fique acima do fundo */
         }
 
         .interface-box {
-            background-color: rgba(0, 0, 0, 0.9);
+            background-color: rgba(0, 0, 0, 0.95); /* Torna a caixa do chat bem escura */
             border: 3px solid var(--color-red);
             box-shadow: 0 0 20px var(--color-red);
             width: 100%;
@@ -58,17 +65,42 @@
             display: flex;
             flex-direction: column;
             min-height: 600px;
+            position: relative; 
+            z-index: 20; 
         }
 
-        /* --- Estilos de Login --- */
+        /* --- Estilos da TELA DE LOGIN --- */
         #login-screen {
+            flex-grow: 1;
+            position: relative; 
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             padding: 40px;
             text-align: center;
-            flex-grow: 1;
+        }
+
+        /* 💥 NOVO: Fundo com a imagem do JOKER APENAS para a tela de login */
+        #login-screen::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('static/joker_background.jpg'); /* Imagem do Joker com a mão */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.2; 
+            z-index: -1;
+        }
+        
+        /* Garante que o conteúdo da tela de login (texto e formulário) fique por cima do fundo */
+        #login-screen * {
+            position: relative;
+            z-index: 2;
         }
         
         #login-screen h1 {
@@ -122,6 +154,8 @@
             display: none; /* Escondido por padrão */
             flex-direction: column;
             flex-grow: 1;
+            /* O fundo é semi-transparente para ver a imagem da cidade P&B atrás */
+            background-color: rgba(0, 0, 0, 0.7); 
         }
 
         .header {
@@ -151,6 +185,8 @@
             padding: 15px;
             overflow-y: auto;
             border-bottom: 1px solid var(--color-red);
+            /* Fundo da história um pouco mais escuro, mas ainda vendo o fundo da chat-screen */
+            background-color: rgba(0, 0, 0, 0.2); 
         }
 
         .message {
@@ -176,7 +212,7 @@
         .bot-message p {
             margin: 0;
             color: var(--color-white);
-            white-space: pre-wrap; /* Preserva quebras de linha */
+            white-space: pre-wrap;
         }
         
         .typing-indicator {
@@ -220,7 +256,6 @@
     </style>
 </head>
 <body>
-    <div class="background-container"></div>
     <div class="app-container">
         <div class="interface-box">
 
@@ -306,8 +341,6 @@
             const storedData = localStorage.getItem('user_data');
             if (storedData) {
                 const data = JSON.parse(storedData);
-                // 💡 Nota: Em um sistema real, você enviaria um token para o servidor para revalidar a sessão.
-                // Aqui, apenas reabilitamos a interface.
                 setLoggedIn(data);
             }
         }
