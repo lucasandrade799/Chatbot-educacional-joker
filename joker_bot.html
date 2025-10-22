@@ -3,40 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Joker Bot - Metaverso Acadêmico</title>
+    <title>Joker Bot - Meta Cognitiva (P5 Style)</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+
     <style>
-        /* --- Variáveis de Estilo --- */
+        /* Paleta de Cores Persona 5 */
         :root {
-            --color-red: #f00; /* Vermelho P5 (A cor do Joker) */
-            --color-black-bg: #111;
-            --color-darker-bg: #222;
-            --color-darkest: #2c2c2c;
-            --color-white: #fff;
-            --font-main: Arial, sans-serif;
-            --font-header: 'Georgia', serif; 
+            --p5-red: #CC0000;
+            --p5-black: #000000;
+            --p5-white: #FFFFFF;
+            --p5-font: 'Oswald', sans-serif;
+            --p5-font-bold: 'Anton', sans-serif;
         }
-        
-        /* --- Estilo Global (Fundo e Centralização) --- */
+
+        /* --- Estilo Global e Fundo (Corrigido para evitar conflito de layout) --- */
         body, html {
             min-height: 100vh;
             margin: 0;
-            font-family: var(--font-main);
-            color: var(--color-white);
-            background-color: var(--color-black-bg);
+            font-family: var(--p5-font);
+            color: var(--p5-white);
+            background-color: var(--p5-black);
             
             display: flex;
             justify-content: center;
             align-items: center;
             
-            /* Fundo da Imagem da Cidade P&B (background.jpg) */
+            /* Fundo da Imagem da Cidade P&B */
             background-image: url('static/background.jpg'); 
             background-size: cover;
             background-position: center;
-            background-repeat: no-repeat;
             background-attachment: fixed;
         }
 
-        /* Camada escura sobre a imagem da cidade para contraste */
+        /* Overlay escuro */
         body::before {
             content: '';
             position: fixed;
@@ -45,52 +46,56 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.7); 
-            z-index: -1;
+            z-index: 5;
         }
 
-        /* 🟢 CONTAINER PRINCIPAL (Moldura do Chat) */
+        /* 🟢 CONTAINER PRINCIPAL (Moldura do Chat) - CORREÇÃO CRÍTICA */
         #main-app-container {
-            /* Garante o tamanho padrão do chatbox */
             width: 90%;
-            max-width: 600px;
-            min-width: 320px; /* Impede o colapso total */
-            height: 90vh; 
+            max-width: 400px;
+            min-width: 320px; /* Garante que não colapse no mobile */
+            height: 95vh; 
             max-height: 800px;
             
-            background-color: var(--color-darker-bg);
-            border-radius: 12px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            background-color: var(--p5-red); 
+            border: 5px solid var(--p5-white);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
             
-            position: relative; /* Mantido para conter as telas internas */
-            z-index: 100;
+            position: relative; 
+            z-index: 10;
             
-            /* O Flexbox aqui deve ser usado APENAS para gerenciar as telas de login/chat */
-            display: block; /* Mudei para block e vou usar as telas internas com position absolute */
+            /* Flexbox para gerenciar as telas internas */
+            display: flex; 
+            flex-direction: column;
+            overflow: hidden; 
+            
+            /* IMPEDE que o Flexbox pai (BODY) o esmague! */
+            flex-shrink: 0; 
         }
         
-        /* --- TELA DE LOGIN --- */
-        #login-screen {
-            /* 🟢 CORREÇÃO: Força a ocupação total do container principal */
+        /* --- TELAS INTERNAS (Login e Chat) --- */
+        .app-screen {
             position: absolute; 
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            
-            display: flex; 
-            flex-direction: column;
+            box-sizing: border-box;
+            background-color: var(--p5-red); /* Cor de fundo padrão da P5 */
+            display: none;
+            flex-direction: column; 
+        }
+
+        /* --- TELA DE LOGIN --- */
+        #login-screen {
             justify-content: center;
             align-items: center;
-            
-            padding: 40px;
+            padding: 20px;
             text-align: center;
             z-index: 20; 
-            background-color: var(--color-darker-bg);
-            border-radius: 12px; /* Adicionado para combinar com o pai */
-            box-sizing: border-box; 
         }
         
-        /* Fundo da Imagem do JOKER APENAS para a tela de login */
+        /* Fundo do Joker (joker_background.jpg) APENAS no login */
         #login-screen::before {
             content: '';
             position: absolute;
@@ -99,7 +104,7 @@
             width: 100%;
             height: 100%;
             background-image: url('static/joker_background.jpg'); 
-            background-size: contain; /* Garante que a imagem inteira apareça */
+            background-size: contain; 
             background-position: center;
             background-repeat: no-repeat;
             opacity: 0.3; 
@@ -107,403 +112,440 @@
         }
         
         #login-screen h1 {
-            color: var(--color-red);
-            font-family: var(--font-header);
-            font-size: 2.5em;
+            color: var(--p5-white);
+            font-family: var(--p5-font-bold);
+            font-size: 2.2em;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0 var(--p5-black);
             margin-bottom: 5px;
-            text-shadow: 0 0 5px var(--color-red);
+            line-height: 1;
         }
         
         #login-screen p {
-            width: 80%;
-            max-width: 300px;
+            font-family: var(--p5-font);
+            width: 90%;
+            max-width: 250px;
             margin-bottom: 20px;
-            line-height: 1.4;
         }
         
         #login-form {
             position: relative;
             z-index: 2;
-            width: 80%;
-            max-width: 300px;
-            min-width: 250px; 
+            width: 90%;
+            max-width: 250px;
         }
 
         #login-form input {
             width: 100%;
             padding: 10px;
             margin-bottom: 15px;
-            border: 2px solid var(--color-red);
-            background-color: var(--color-darkest); 
-            color: var(--color-white);
-            border-radius: 5px;
+            border: 3px solid var(--p5-white);
+            background-color: var(--p5-black); 
+            color: var(--p5-white);
+            font-family: var(--p5-font);
+            font-size: 1.1em;
             box-sizing: border-box;
             outline: none;
-            transition: border-color 0.3s;
-        }
-
-        #login-form input:focus {
-            border-color: yellow;
         }
         
         #login-form button {
-            background-color: var(--color-red);
-            color: var(--color-white);
+            background-color: var(--p5-white);
+            color: var(--p5-red);
             border: none;
             padding: 12px;
             width: 100%;
             cursor: pointer;
-            font-size: 1.1em;
-            font-weight: bold;
-            transition: background-color 0.3s;
-            border-radius: 5px;
+            font-size: 1.2em;
+            font-family: var(--p5-font-bold);
+            letter-spacing: 2px;
+            transition: background-color 0.1s;
         }
         
-        #login-form button:hover { background-color: #c00; }
+        #login-form button:hover { background-color: #f0f0f0; }
         #login-error { color: yellow; margin-top: 15px; font-weight: bold; display: none; }
 
         /* --- TELA DO CHAT --- */
         #chat-screen {
-            /* 🟢 CORREÇÃO: Força a ocupação total do container principal */
-            position: absolute; 
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%; 
-            border-radius: 12px;
-            
-            display: none; /* Inicia oculta */
-            flex-direction: column;
-            
             z-index: 5;
-            background-color: var(--color-darker-bg); 
-            box-sizing: border-box;
+            background-color: var(--p5-red); 
         }
 
-        #chat-header {
-            background-color: var(--color-red); 
-            color: white;
-            padding: 15px;
-            font-size: 1.2em;
-            font-weight: bold;
-            text-align: center;
-            min-height: 50px; 
+        /* 🟢 Estilos Reutilizados do seu CSS P5 */
+        .chat-header {
+            background-color: var(--p5-black);
+            color: var(--p5-white);
+            padding: 15px 10px;
+            border-bottom: 5px solid var(--p5-white);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            
-            /* Melhor controle de overflow do texto */
-            overflow: hidden; 
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
+            min-height: 50px;
         }
-        
-        #chat-header span {
-            /* Permite que o texto de boas-vindas encolha um pouco */
-            white-space: nowrap; 
+
+        .chat-header span {
+            /* Texto do header (Joker Bot - Bem-vindo...) */
+            flex-grow: 1;
+            font-family: var(--p5-font-bold);
+            font-size: 1.1em;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 0 var(--p5-red);
+            padding-left: 10px; 
+            white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            flex-grow: 1;
-            padding-right: 10px;
         }
         
         #logout-button {
-            background: none;
-            border: 1px solid var(--color-white);
-            color: var(--color-white);
+            background-color: var(--p5-red);
+            border: 3px solid var(--p5-white);
+            color: var(--p5-white);
             padding: 5px 10px;
             cursor: pointer;
             font-size: 0.8em;
+            font-family: var(--p5-font-bold);
             white-space: nowrap;
             flex-shrink: 0; 
-            border-radius: 4px;
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 75% 100%, 0 100%);
         }
 
+        /* Área de Mensagens (Vermelho P5) */
         #chat-box {
-            padding: 15px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1; /* Permite que a caixa de chat use o espaço restante */
-        }
-
-        .message {
-            max-width: 80%;
-            margin-bottom: 10px;
+            flex-grow: 1;
+            background-color: var(--p5-red); 
             padding: 10px;
-            border-radius: 10px;
-            word-wrap: break-word;
+            overflow-y: auto;
+            border-bottom: 5px solid var(--p5-white);
+        }
+        
+        /* Estilos dos Balões de Mensagem */
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
         }
 
-        .user-message {
-            background-color: #333;
-            color: #fff;
-            align-self: flex-end;
-            border-bottom-right-radius: 0;
+        /* Ícone do Bot (Joker) - CORRIGIDO */
+        .bot-icon {
+            width: 50px; 
+            height: 50px;
+            background-color: var(--p5-black);
+            border: 2px solid var(--p5-white);
+            margin-right: 10px;
+            flex-shrink: 0;
+            
+            /* 🟢 CORREÇÃO: Verifica se a URL da imagem está correta */
+            background-image: url('static/joker_icon.png'); 
+            background-size: cover;
+            background-position: center;
+            
+            filter: grayscale(100%); 
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%); 
         }
 
-        .bot-message {
-            background-color: var(--color-red); 
-            color: #fff;
-            align-self: flex-start;
-            border-bottom-left-radius: 0;
+        /* Balão do Bot */
+        .bot-text {
+            background-color: var(--p5-black);
+            color: var(--p5-white);
+            padding: 8px 15px;
+            max-width: 75%; 
+            font-size: 1em;
+            font-family: var(--p5-font);
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
             white-space: pre-wrap;
         }
         
-        .typing-indicator {
+        .loading .bot-text {
             font-style: italic;
-            color: yellow;
-            padding: 10px;
-            display: none;
         }
 
+        /* Balão do Usuário (Navegando na direita) */
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .user-text {
+            background-color: var(--p5-white);
+            color: var(--p5-black);
+            padding: 8px 15px;
+            max-width: 80%;
+            font-size: 1em;
+            font-family: var(--p5-font);
+            clip-path: polygon(0 20%, 10% 0, 100% 0, 100% 100%, 0 100%);
+        }
+
+        /* Área de Input */
         #input-container {
+            padding: 10px;
+            background-color: var(--p5-red); 
             display: flex;
-            padding: 15px;
-            border-top: 1px solid #333;
-            background-color: var(--color-darkest);
-            border-bottom-left-radius: 12px;
-            border-bottom-right-radius: 12px;
         }
 
         #user-input {
             flex-grow: 1;
             padding: 10px;
-            border: none;
-            border-radius: 5px;
-            margin-right: 10px;
-            background-color: #444;
-            color: white;
-            resize: none;
+            border: 3px solid var(--p5-black);
+            font-size: 1em;
+            background-color: var(--p5-white);
+            color: var(--p5-black);
+            font-family: var(--p5-font);
             outline: none;
+            resize: none; /* Mantém o ajuste de altura via JS */
+            margin-right: 5px;
         }
 
         #send-button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            background-color: var(--color-red);
-            color: white;
+            background-color: var(--p5-black);
+            color: var(--p5-white);
+            border: 3px solid var(--p5-white);
+            padding: 10px 15px;
+            font-family: var(--p5-font-bold);
+            font-size: 1em;
             cursor: pointer;
-            font-weight: bold;
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 75% 100%, 0 100%);
+            transition: background-color 0.1s;
             flex-shrink: 0;
         }
 
-        #send-button:disabled {
-            background-color: #666;
-            cursor: not-allowed;
+        #send-button:hover {
+            background-color: var(--p5-red);
+            color: var(--p5-white);
         }
     </style>
 </head>
 <body>
 
-<div id="main-app-container">
+    <div id="main-app-container">
 
-    <div id="login-screen" style="display: flex;">
-        <h1>Phantom Thieves Chat</h1>
-        <p>Entre com suas credenciais acadêmicas (RA e Senha).</p>
-        <form id="login-form">
-            <input type="text" id="ra-input" placeholder="Seu RA" required>
-            <input type="password" id="password-input" placeholder="Sua Senha" required>
-            <button type="submit">LOGIN</button>
-            <div id="login-error" style="display: none;">RA ou Senha inválidos.</div>
-        </form>
+        <div id="login-screen" class="app-screen" style="display: flex;">
+            <h1>Phantom Thieves Chat</h1>
+            <p>Entre com suas credenciais acadêmicas (RA e Senha).</p>
+            <form id="login-form">
+                <input type="text" id="ra-input" placeholder="Seu RA" required>
+                <input type="password" id="password-input" placeholder="Sua Senha" required>
+                <button type="submit">LOGIN</button>
+                <div id="login-error" style="display: none;">RA ou Senha inválidos.</div>
+            </form>
+        </div>
+
+        <div id="chat-screen" class="app-screen" style="display: none;">
+            <div class="chat-header">
+                <span>JOKER - SISTEMA ACADÊMICO | <span id="user-display-name"></span></span>
+                <button id="logout-button">SAIR</button>
+            </div>
+            
+            <div id="chat-box">
+            </div>
+
+            <div id="input-container">
+                <textarea id="user-input" placeholder="Enter message..." rows="1"></textarea>
+                <button id="send-button">SEND</button>
+            </div>
+        </div>
+
     </div>
 
-    <div id="chat-screen" style="display: none;">
-        <div id="chat-header">
-            <span>Joker Bot - Consultoria Acadêmica | Bem-vindo(a), <span id="user-display-name"></span></span>
-            <button id="logout-button">SAIR</button>
-        </div>
-        <div id="chat-box">
-            <div class="message bot-message">
-                Bem-vindo(a). Sou o Joker. Como posso ajudá-lo(a) a passar de ano?
-                <br><br>
-                Tente: "Qual minha nota e faltas na disciplina de Lógica? (RA R3487E5)" ou "Me gere um material sobre Estruturas de Dados."
-            </div>
-            <div class="typing-indicator message bot-message" style="display: none;">Joker Bot está digitando...</div>
-        </div>
-        <div id="input-container">
-            <textarea id="user-input" placeholder="Digite sua pergunta..." rows="1"></textarea>
-            <button id="send-button">Enviar</button>
-        </div>
-    </div>
-
-</div>
-
-<script>
-    let isLoggedIn = false;
-    let userData = {}; 
-
-    const loginScreen = document.getElementById('login-screen');
-    const chatScreen = document.getElementById('chat-screen');
-    const loginForm = document.getElementById('login-form');
-    const loginError = document.getElementById('login-error');
-    const chatBox = document.getElementById('chat-box');
-    const userInput = document.getElementById('user-input');
-    const sendButton = document.getElementById('send-button');
-    const userDisplayName = document.getElementById('user-display-name');
-    const logoutButton = document.getElementById('logout-button');
-    const typingIndicator = document.querySelector('.typing-indicator');
-
-    // --- FUNÇÕES DE CONTROLE DE TELA ---
-
-    function setLoggedIn(data) {
-        isLoggedIn = true;
-        userData = data;
-        userDisplayName.textContent = data.nome;
-        loginScreen.style.display = 'none';
-        chatScreen.style.display = 'flex'; // Exibe como flex para usar o layout de coluna
-    }
-
-    function setLoggedOut() {
-        isLoggedIn = false;
-        userData = {};
-        localStorage.removeItem('user_data');
+    <script>
+        // ⚠️ IMPORTANTE: Use 'http://127.0.0.1:5000' para teste local.
+        const API_BASE_URL = 'http://127.0.0.1:5000'; 
         
-        chatBox.innerHTML = `
-            <div class="message bot-message">
-                Bem-vindo(a). Sou o Joker. Como posso ajudá-lo(a) a passar de ano?
-                <br><br>
-                Tente: "Qual minha nota e faltas na disciplina de Lógica? (RA R3487E5)" ou "Me gere um material sobre Estruturas de Dados."
-            </div>
-            <div class="typing-indicator message bot-message" style="display: none;">Joker Bot está digitando...</div>
-        `;
+        let isLoggedIn = false;
+        let userData = {}; 
 
-        chatScreen.style.display = 'none';
-        loginScreen.style.display = 'flex';
-    }
-    
-    // --- FUNÇÕES DE LOGIN ---
+        const loginScreen = document.getElementById('login-screen');
+        const chatScreen = document.getElementById('chat-screen');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const userDisplayName = document.getElementById('user-display-name');
+        const logoutButton = document.getElementById('logout-button');
 
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+        // --- FUNÇÕES DE CONTROLE DE TELA ---
+
+        function setLoggedIn(data) {
+            isLoggedIn = true;
+            userData = data;
+            userDisplayName.textContent = data.nome;
+            loginScreen.style.display = 'none';
+            chatScreen.style.display = 'flex'; 
+        }
+
+        function setLoggedOut() {
+            isLoggedIn = false;
+            userData = {};
+            localStorage.removeItem('user_data');
+            
+            chatBox.innerHTML = '';
+            
+            chatScreen.style.display = 'none';
+            loginScreen.style.display = 'flex';
+        }
         
-        const ra = document.getElementById('ra-input').value;
-        const senha = document.getElementById('password-input').value;
+        // --- FUNÇÕES DE LOGIN ---
 
-        loginError.style.display = 'none';
-        loginError.textContent = 'RA ou Senha inválidos.'; 
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const ra = document.getElementById('ra-input').value;
+            const senha = document.getElementById('password-input').value;
 
-        try {
-            // Rota /login no app.py (precisa ser adicionada)
-            const response = await fetch('/login', { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ra, senha }) 
-            });
+            loginError.style.display = 'none';
+            loginError.textContent = 'RA ou Senha inválidos.'; 
 
-            const data = await response.json();
+            try {
+                // Chama a rota /login no app.py
+                const response = await fetch(`${API_BASE_URL}/login`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ra, senha }) 
+                });
 
-            if (response.ok) { 
-                const userData = data.user;
-                localStorage.setItem('user_data', JSON.stringify(userData)); 
-                setLoggedIn(userData);
-                
-            } else {
-                loginError.textContent = data.message || 'RA ou Senha inválidos.';
+                const data = await response.json();
+
+                if (response.ok) { 
+                    const userData = data.user;
+                    localStorage.setItem('user_data', JSON.stringify(userData)); 
+                    setLoggedIn(userData);
+                    appendMessage('bot', `Bem-vindo, **${userData.nome}**.\nDiga seu **RA** para ver o Histórico ou o **Tópico** para gerar Material de Estudo.`);
+                    
+                } else {
+                    loginError.textContent = data.message || 'RA ou Senha inválidos.';
+                    loginError.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Erro ao conectar com o servidor:', error);
+                loginError.textContent = 'Erro de conexão com o servidor. Tente novamente.';
                 loginError.style.display = 'block';
             }
+        });
 
-        } catch (error) {
-            console.error('Erro ao conectar com o servidor:', error);
-            loginError.textContent = 'Erro de conexão com o servidor. Tente novamente.';
-            loginError.style.display = 'block';
-        }
-    });
-
-    logoutButton.addEventListener('click', setLoggedOut);
+        logoutButton.addEventListener('click', setLoggedOut);
 
 
-    // --- FUNÇÕES DO CHAT ---
-
-    function appendMessage(text, sender) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', sender === 'user' ? 'user-message' : 'bot-message');
+        // --- FUNÇÕES DO CHAT ---
         
-        const p = document.createElement('p');
-        p.innerHTML = text.replace(/\n/g, '<br>'); 
-        
-        messageDiv.appendChild(p);
-        chatBox.appendChild(messageDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-    
-    function showTypingIndicator() {
-        typingIndicator.style.display = 'block';
-        chatBox.appendChild(typingIndicator); 
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
+        function appendMessage(sender, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender);
 
-    function hideTypingIndicator() {
-        typingIndicator.style.display = 'none';
-    }
+            // Formatação: substitui quebras de linha e negrito (P5 Style)
+            const formattedText = text
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-    async function sendMessage() {
-        const messageText = userInput.value.trim();
-        if (!messageText || !isLoggedIn) return; 
-
-        appendMessage(messageText, 'user');
-        userInput.value = '';
-        
-        sendButton.disabled = true;
-        userInput.disabled = true;
-        showTypingIndicator();
-
-        try {
-            const response = await fetch('/web_router', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: messageText })
-            });
-
-            const data = await response.json();
-
-            if (response.ok && data.status === 'success') {
-                appendMessage(data.message, 'bot');
-            } else if (response.status === 401) {
-                setLoggedOut();
-                alert('Sua sessão expirou. Por favor, faça login novamente.');
+            if (sender === 'bot') {
+                messageDiv.innerHTML = `
+                    <div class="bot-icon"></div>
+                    <div class="bot-text">${formattedText}</div>
+                `;
             } else {
-                const errorMessage = data.message || "Erro desconhecido ao se comunicar com o Joker Bot.";
-                appendMessage(`❌ Erro: ${errorMessage}`, 'bot');
+                // Usuário não precisa de formatação HTML no texto
+                messageDiv.innerHTML = `<div class="user-text">${text}</div>`; 
             }
-        } catch (error) {
-            console.error('Erro de rede:', error);
-            appendMessage('❌ Erro de conexão de rede. Verifique sua internet.', 'bot');
-        } finally {
-            hideTypingIndicator();
-            sendButton.disabled = false;
+            
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function showLoading() {
+            const loadingMessage = document.createElement('div');
+            loadingMessage.classList.add('message', 'bot', 'loading');
+            loadingMessage.innerHTML = `<div class="bot-icon"></div><div class="bot-text">Aguarde... Analisando a Meta Cognitiva.</div>`;
+            loadingMessage.id = 'loading-indicator';
+            chatBox.appendChild(loadingMessage);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            userInput.disabled = true;
+            sendButton.disabled = true;
+        }
+
+        function hideLoading() {
+            const loadingIndicator = document.getElementById('loading-indicator');
+            if (loadingIndicator) {
+                loadingIndicator.remove();
+            }
             userInput.disabled = false;
-            userInput.focus();
+            sendButton.disabled = false;
         }
-    }
-    
-    // Ajusta altura do textarea
-    userInput.addEventListener('input', () => {
-        userInput.style.height = 'auto';
-        userInput.style.height = (userInput.scrollHeight) + 'px';
-    });
 
-    // Eventos
-    sendButton.addEventListener('click', sendMessage);
-    userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
+        async function processUserMessage(message) {
+            const endpoint = 'web_router';
+            const payload = { message: message };
 
-    // --- LÓGICA DE AUTO-LOGIN ---
-    (function checkAutoLogin() {
-        const storedData = localStorage.getItem('user_data');
-        if (storedData) {
-            const data = JSON.parse(storedData);
-            setLoggedIn(data);
-        } else {
-            loginError.style.display = 'none'; 
+            showLoading();
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                if (response.status === 200 && data.status === 'success') {
+                    return data.message;
+                } else if (response.status === 401) {
+                    // Se o roteador retornar 401 (não autorizado), força o logout
+                    setLoggedOut();
+                    alert('Sua sessão expirou. Por favor, faça login novamente.');
+                    return null;
+                } else {
+                    return `Joker: Ops! ${data.message || 'Ocorreu um erro desconhecido no servidor.'}`;
+                }
+
+            } catch (error) {
+                console.error('Erro ao chamar a API:', error);
+                return "Joker: Falha na comunicação com o servidor. Verifique se o Back-end Python está rodando e se a URL está correta.";
+            } finally {
+                hideLoading();
+            }
         }
-    })();
-</script>
+
+
+        async function handleSend() {
+            const message = userInput.value.trim();
+            if (message === '' || !isLoggedIn) return;
+
+            appendMessage('user', message);
+            userInput.value = '';
+            userInput.style.height = 'auto'; // Reseta a altura do textarea
+
+            const botResponse = await processUserMessage(message);
+            if (botResponse) {
+                appendMessage('bot', botResponse);
+            }
+        }
+        
+        // Ajusta altura do textarea
+        userInput.addEventListener('input', () => {
+            userInput.style.height = 'auto';
+            userInput.style.height = (userInput.scrollHeight) + 'px';
+        });
+
+        // Eventos
+        sendButton.addEventListener('click', handleSend);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
+        });
+
+        // --- LÓGICA DE AUTO-LOGIN E INÍCIO ---
+        (function checkAutoLogin() {
+            const storedData = localStorage.getItem('user_data');
+            if (storedData) {
+                const data = JSON.parse(storedData);
+                setLoggedIn(data);
+                // Mensagem inicial após o auto-login
+                appendMessage('bot', `Bem-vindo de volta, **${data.nome}**.\nDiga seu **RA** para ver o Histórico ou o **Tópico** para gerar Material de Estudo.`);
+            } else {
+                loginError.style.display = 'none'; 
+            }
+        })();
+    </script>
 </body>
 </html>
+
