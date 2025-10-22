@@ -29,7 +29,7 @@
             min-height: 100vh;
             overflow: hidden;
             
-            /* 💥 Fundo da Imagem da Cidade P&B (Fundo Padrão para o CHAT) */
+            /* Fundo da Imagem da Cidade P&B (Certifique-se que o nome do arquivo é background.jpg) */
             background-image: url('static/background.jpg'); 
             background-size: cover;
             background-position: center;
@@ -49,38 +49,45 @@
             z-index: -1;
         }
 
-        /* 💡 CORREÇÃO 1: Este container não precisa ser flex-box no CSS, 
-           pois o body já centraliza. Apenas ajustamos suas propriedades de caixa. */
+        /* CORREÇÃO CRÍTICA: Container principal deve ter dimensões e position: relative */
         #main-app-container {
             width: 90%;
             max-width: 600px;
             background-color: var(--color-darker-bg);
             border-radius: 12px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            /* Importante: Ocupa o tamanho da viewport para o posicionamento interno */
-            height: 80vh; 
+            
+            /* Garante que o container ocupe espaço e ancore os elementos absolutos */
+            height: 90vh; 
             max-height: 800px;
             
-            position: relative;
+            position: relative; 
             z-index: 10;
+            display: flex;
+            flex-direction: column;
         }
         
         /* --- TELA DE LOGIN --- */
         #login-screen {
-            /* 💡 CORREÇÃO 2: Garante que a tela de login preencha 100% do container pai */
+            /* Garante que o login preencha todo o container principal */
             position: absolute; 
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             
-            display: flex; /* Garante que o conteúdo (formulário) seja centralizado */
+            /* Garante visibilidade e centralização inicial */
+            display: flex; 
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            
             padding: 40px;
             text-align: center;
-            z-index: 20; /* Fica acima de tudo */
+            z-index: 20; 
+            
+            /* Fundo sólido para cobrir o fundo do #main-app-container */
+            background-color: var(--color-darker-bg);
         }
         
         /* Fundo da Imagem do JOKER APENAS para a tela de login */
@@ -119,7 +126,7 @@
             padding: 10px;
             margin-bottom: 15px;
             border: 2px solid var(--color-red);
-            background-color: var(--color-darker-bg);
+            background-color: var(--color-darkest); 
             color: var(--color-white);
             border-radius: 5px;
             box-sizing: border-box;
@@ -141,19 +148,21 @@
         #login-form button:hover { background-color: #c00; }
         #login-error { color: yellow; margin-top: 15px; font-weight: bold; display: none; }
 
-        /* --- TELA DO CHAT (Seu Estilo P5 Exato) --- */
+        /* --- TELA DO CHAT --- */
         #chat-screen {
-            display: none; /* Escondido por padrão, o JS vai mostrar */
+            display: none; /* Oculto por padrão, o JS vai mostrar */
             flex-direction: column;
             flex-grow: 1;
             width: 100%;
             height: 100%;
             z-index: 5;
-            /* Fundo sólido para cobrir a tela de login e seus fundos quando ativo */
-            background-color: var(--color-darker-bg); 
-            position: absolute; /* 💡 CORREÇÃO 3: Posicionamento absoluto para que o login e chat se sobreponham/substituam */
+            
+            /* Garante que o chat preencha todo o container principal e cubra o login */
+            position: absolute; 
             top: 0;
             left: 0;
+            
+            background-color: var(--color-darker-bg); 
         }
 
         #chat-header {
@@ -302,9 +311,7 @@
         isLoggedIn = true;
         userData = data;
         userDisplayName.textContent = data.nome;
-        // Oculta a tela de login
         loginScreen.style.display = 'none';
-        // Exibe a tela de chat
         chatScreen.style.display = 'flex';
     }
 
@@ -313,6 +320,7 @@
         userData = {};
         localStorage.removeItem('user_data');
         
+        // Limpa o chat e volta para a mensagem inicial
         chatBox.innerHTML = `
             <div class="message bot-message">
                 Bem-vindo(a). Sou o Joker. Como posso ajudá-lo(a) a passar de ano?
@@ -326,13 +334,16 @@
         loginScreen.style.display = 'flex';
     }
 
-    // --- FUNÇÕES DE LOGIN (Restante do JavaScript...) ---
-    
+    // --- FUNÇÕES DE LOGIN ---
+
     function checkAutoLogin() {
         const storedData = localStorage.getItem('user_data');
         if (storedData) {
             const data = JSON.parse(storedData);
             setLoggedIn(data);
+        } else {
+             // Garante que o login fique visível se não houver auto-login
+            loginScreen.style.display = 'flex'; 
         }
     }
 
@@ -346,6 +357,7 @@
         loginError.textContent = '';
 
         try {
+            // A URL /login deve estar funcionando no seu app.py
             const response = await fetch('/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -371,6 +383,7 @@
 
     logoutButton.addEventListener('click', setLoggedOut);
 
+
     // --- FUNÇÕES DO CHAT ---
 
     function appendMessage(text, sender) {
@@ -387,13 +400,12 @@
     
     function showTypingIndicator() {
         typingIndicator.style.display = 'block';
-        chatBox.appendChild(typingIndicator); // Garante que esteja no final
+        chatBox.appendChild(typingIndicator); 
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     function hideTypingIndicator() {
         typingIndicator.style.display = 'none';
-        // Não remove, apenas esconde.
     }
 
     async function sendMessage() {
@@ -408,6 +420,7 @@
         showTypingIndicator();
 
         try {
+             // A URL /web_router deve estar funcionando no seu app.py
             const response = await fetch('/web_router', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -456,6 +469,3 @@
 </script>
 </body>
 </html>
-
-
-
