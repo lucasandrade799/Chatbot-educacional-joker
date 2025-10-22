@@ -12,13 +12,15 @@ from flask_cors import CORS
 API_KEY_GEMINI = os.environ.get('GEMINI_API_KEY')
 DATABASE_NAME = 'BDchatbot.db'
 
-# --- 1. SCRIPT SQL COMPLETO ---
+# --- 1. SCRIPT SQL COMPLETO CORRIGIDO (COM SENHA E CATEGORIA) ---
 SQL_SCRIPT_CONTENT = """
 -- CRIAÇÃO DAS TABELAS (Ajustado para SQLite: INTEGER PRIMARY KEY AUTOINCREMENT)
 CREATE TABLE IF NOT EXISTS Alunos (
     id_aluno INTEGER PRIMARY KEY AUTOINCREMENT,
     RA VARCHAR(10) NOT NULL UNIQUE,
-    Nome_Completo VARCHAR(100) NOT NULL
+    Nome_Completo VARCHAR(100) NOT NULL,
+    Senha VARCHAR(100),              -- 🆕 COLUNA DE AUTENTICAÇÃO
+    Categoria VARCHAR(20) DEFAULT 'aluno' -- 🆕 COLUNA DE PERFIL
 );
 
 CREATE TABLE IF NOT EXISTS Disciplinas (
@@ -46,10 +48,14 @@ INSERT OR IGNORE INTO Disciplinas (Nome_Disciplina, Semestre) VALUES
 ('Introdução à Programação', 1), ('Lógica de Computação', 1), ('Fundamentos de Sistemas', 1), ('Português e Redação', 1),
 ('Estruturas de Dados', 2), ('Banco de Dados I', 2), ('Arquitetura de Computadores', 2), ('Ética e Cidadania', 2);
 
--- POPULANDO A TABELA ALUNOS
-INSERT OR IGNORE INTO Alunos (RA, Nome_Completo) VALUES
-('R3487E5', 'Matheus de Assis Alves'), ('R6738H5', 'Matheus Balzi da Silva'), ('R818888', 'Lucas Gabriel da Silva Gardezan'),
-('H755247', 'Matheus Henrique Castro de Oliveira'), ('R848140', 'Thainanda Alves Monteiro'), ('820793', 'Lucas da Silva Andrade');
+-- POPULANDO A TABELA ALUNOS (AGORA COM SENHAS: '12345' para todos)
+INSERT OR IGNORE INTO Alunos (RA, Nome_Completo, Senha, Categoria) VALUES
+('R3487E5', 'Matheus de Assis Alves', '12345', 'aluno'),
+('R6738H5', 'Matheus Balzi da Silva', '12345', 'aluno'),
+('R818888', 'Lucas Gabriel da Silva Gardezan', '12345', 'aluno'),
+('H755247', 'Matheus Henrique Castro de Oliveira', '12345', 'aluno'),
+('R848140', 'Thainanda Alves Monteiro', '12345', 'aluno'),
+('820793', 'Lucas da Silva Andrade', '12345', 'aluno');
 
 -- REGISTRO DO HISTÓRICO ACADÊMICO
 INSERT OR IGNORE INTO Historico_Academico (fk_id_aluno, fk_id_disciplina, Nota, Faltas, Estudos_Disciplinares_Concluido, AVAS_Concluido) VALUES
@@ -119,7 +125,7 @@ else:
     print("⚠️ Chave API do Gemini ausente. A Op. 2 e o roteador não funcionarão.")
 
 
-# --- 2. FUNÇÕES DE SUPORTE AO BANCO DE DADOS ---
+# --- 2. FUNÇÕES DE SUPORTE AO BANCO DE DADOS E AUTENTICAÇÃO ---
 
 def init_db():
     """Cria e popula o banco de dados. Chamado apenas no início do servidor."""
@@ -133,13 +139,27 @@ def init_db():
         print(f"✅ Banco de dados '{DATABASE_NAME}' verificado e pronto para uso.")
     except sqlite3.Error as e:
         print(f"❌ Erro na inicialização do banco de dados: {e}")
-        exit()
+        pass # Mantém o servidor rodando mesmo com erro de DB (em dev)
 
 def get_db_connection():
     """Retorna uma nova conexão ao banco de dados para uma requisição."""
     conn = sqlite3.connect(DATABASE_NAME)
     conn.row_factory = sqlite3.Row
     return conn
+
+def check_user_credentials(ra: str, senha: str):
+    """Verifica se o RA e a Senha correspondem a um registro no DB."""
+    conn = get_db_connection()
+    # ⚠️ Nota de Segurança: Em um ambiente de produção real, use um hash seguro (ex: bcrypt), não texto simples.
+    user = conn.execute("SELECT RA, Nome_Completo, Categoria FROM Alunos WHERE RA = ? AND Senha = ?", (ra, senha)).fetchone()
+    conn.close()
+    if user:
+        return {
+            "ra": user["RA"],
+            "nome": user["Nome_Completo"],
+            "categoria": user["Categoria"]
+        }
+    return None
 
 # --- 3. FUNÇÕES DE OPERAÇÃO (LÓGICA CORE) ---
 
@@ -149,8 +169,8 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
 
     comando_sql_join = """
     SELECT
-        A.Nome_Completo, D.Nome_Disciplina, D.Semestre,
-        H.Nota, H.Faltas, H.Estudos_Disciplinares_Concluido, H.AVAS_Concluido
+    A.Nome_Completo, D.Nome_Disciplina, D.Semestre,
+    H.Nota, H.Faltas, H.Estudos_Disciplinares_Concluido, H.AVAS_Concluido
     FROM Historico_Academico H
     JOIN Alunos A ON H.fk_id_aluno = A.id_aluno
     JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
@@ -238,7 +258,7 @@ TOOLS = {
 
 def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
     """
-    Usa o Gemini para interpretar a intenção do usuário (Function Calling),
+    Usa o Gemini para interpretar a intenção do usuário (Function Calling), 
     executa a função apropriada (SQL ou Gemini) e gera a resposta final em texto.
     """
 
@@ -257,11 +277,10 @@ def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=[prompt_ferramenta],
-            # CORREÇÃO APLICADA: Uso de 'config' para resolver o erro 'tools' no Render
+            # 💡 CORREÇÃO APLICADA: Uso de 'config' para resolver o erro 'tools' no Render
             config=GenerateContentConfig(tools=list(TOOLS.values()))
         )
     except Exception as e:
-        # Erro de 'tools' não deve ocorrer na hospedagem, mas é bom ter uma mensagem genérica de erro aqui.
         print(f"Erro na chamada do Gemini: {e}")
         return "❌ Erro ao processar a requisição com o Gemini. Tente novamente."
 
@@ -302,12 +321,41 @@ def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
     # 6. Se nenhuma função foi chamada, o Gemini respondeu diretamente
     return response.text
 
-# --- ROTA PARA SERVIR O FRONT-END ---
+# --- ROTA PARA SERVIR O FRONT-END E ARQUIVOS ESTÁTICOS (STATIC FILES) ---
 @app.route('/')
 def serve_index():
-    """Serva o arquivo index.html principal, que está na raiz."""
-    # ⬅️ Faz o Flask enviar o arquivo index.html da pasta raiz
+    """Serva o arquivo joker_bot.html principal."""
+    # ⬅️ Faz o Flask enviar o arquivo joker_bot.html da pasta raiz
     return send_file('joker_bot.html')
+
+# 🆕 ROTA PARA O LOGIN WEB 
+@app.route('/login', methods=['POST'])
+def login():
+    """Endpoint para autenticação de usuário via front-end web."""
+    try:
+        data = request.get_json()
+        ra = data.get('ra')
+        senha = data.get('senha')
+
+        if not ra or not senha:
+            return jsonify({"status": "error", "message": "RA e Senha são obrigatórios."}), 400
+
+        user_data = check_user_credentials(ra, senha)
+
+        if user_data:
+            # Autenticação bem-sucedida
+            return jsonify({
+                "status": "success",
+                "message": f"Bem-vindo(a), {user_data['nome']}!",
+                "user": user_data
+            }), 200
+        else:
+            # Falha na autenticação
+            return jsonify({"status": "error", "message": "RA ou Senha inválidos."}), 401
+
+    except Exception as e:
+        print(f"❌ Erro na rota de login: {e}")
+        return jsonify({"status": "error", "message": "Erro interno do servidor durante o login."}), 500
 
 # --- 5. ROTA PRINCIPAL PARA O FRONT-END WEB ---
 @app.route('/web_router', methods=['POST'])
@@ -363,3 +411,4 @@ init_db()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
