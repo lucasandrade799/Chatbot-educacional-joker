@@ -74,7 +74,6 @@
             width: 100%;
             height: 100%;
             
-            /* Estilo inline no HTML força display: flex */
             display: flex; 
             flex-direction: column;
             justify-content: center;
@@ -85,6 +84,8 @@
             z-index: 20; 
             
             background-color: var(--color-darker-bg);
+            /* Importante: Garante que os filhos não fiquem espremidos */
+            box-sizing: border-box; 
         }
         
         /* Fundo da Imagem do JOKER APENAS para a tela de login */
@@ -97,7 +98,8 @@
             height: 100%;
             /* IMAGEM joker_background.jpg */
             background-image: url('static/joker_background.jpg'); 
-            background-size: cover;
+            /* CORREÇÃO: Usar contain para ver a imagem inteira ou '150% auto' para esticar */
+            background-size: contain; 
             background-position: center;
             background-repeat: no-repeat;
             opacity: 0.3; 
@@ -261,7 +263,7 @@
             <input type="text" id="ra-input" placeholder="Seu RA" required>
             <input type="password" id="password-input" placeholder="Sua Senha" required>
             <button type="submit">LOGIN</button>
-            <div id="login-error" style="display: none;"></div>
+            <div id="login-error" style="display: none;">RA ou Senha inválidos.</div>
         </form>
     </div>
 
@@ -290,7 +292,6 @@
     let isLoggedIn = false;
     let userData = {}; 
 
-    const mainAppContainer = document.getElementById('main-app-container');
     const loginScreen = document.getElementById('login-screen');
     const chatScreen = document.getElementById('chat-screen');
     const loginForm = document.getElementById('login-form');
@@ -308,9 +309,7 @@
         isLoggedIn = true;
         userData = data;
         userDisplayName.textContent = data.nome;
-        // Oculta a tela de login
         loginScreen.style.display = 'none';
-        // Exibe a tela de chat
         chatScreen.style.display = 'flex';
     }
 
@@ -334,8 +333,6 @@
     
     // --- FUNÇÕES DE LOGIN ---
 
-    // A função checkAutoLogin foi removida para garantir que a tela de login apareça primeiro.
-
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -343,22 +340,42 @@
         const senha = document.getElementById('password-input').value;
 
         loginError.style.display = 'none';
-        loginError.textContent = '';
+        loginError.textContent = 'RA ou Senha inválidos.'; // Reset message
 
         try {
-            const response = await fetch('/login', {
+            // A rota /login é o seu ponto de autenticação
+            const response = await fetch('/login', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ra, senha })
+                // Nota: A senha não está sendo usada no app.py, mas a requisição é necessária.
+                body: JSON.stringify({ ra, senha }) 
             });
 
             const data = await response.json();
 
-            if (response.ok) {
-                localStorage.setItem('user_data', JSON.stringify(data.user)); 
-                setLoggedIn(data.user);
+            // Simulação de login: Se a rota retornar 200/OK, o login é bem-sucedido.
+            if (response.ok) { 
+                // Buscamos o nome do aluno usando o RA para simular a autenticação bem-sucedida
+                const alunoResponse = await fetch('/get_aluno_info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ra })
+                });
+
+                const alunoData = await alunoResponse.json();
+
+                if (alunoResponse.ok && alunoData.nome) {
+                    const userData = { ra: ra, nome: alunoData.nome };
+                    localStorage.setItem('user_data', JSON.stringify(userData)); 
+                    setLoggedIn(userData);
+                } else {
+                    // Se o RA for válido, mas a senha estiver errada (simulação)
+                    loginError.style.display = 'block';
+                }
+                
             } else {
-                loginError.textContent = data.message || 'Erro de autenticação.';
+                // Se a rota /login falhar
+                loginError.textContent = data.message || 'RA ou Senha inválidos.';
                 loginError.style.display = 'block';
             }
 
@@ -398,7 +415,7 @@
 
     async function sendMessage() {
         const messageText = userInput.value.trim();
-        if (!messageText || !isLoggedIn) return; // Garante que o usuário esteja logado
+        if (!messageText || !isLoggedIn) return; 
 
         appendMessage(messageText, 'user');
         userInput.value = '';
@@ -451,11 +468,20 @@
         }
     });
 
-    // --- INICIALIZAÇÃO ---
-    // Removemos o auto-login. A tela de login é exibida por padrão (CSS/HTML inline).
-    // Para que o login funcione, você precisa implementar a rota /login no seu app.py,
-    // que valide o RA e senha.
+    // --- LÓGICA DE AUTO-LOGIN (Recuperada) ---
+    // Checa o localStorage e loga o usuário automaticamente se houver dados
+    (function checkAutoLogin() {
+        const storedData = localStorage.getItem('user_data');
+        if (storedData) {
+            const data = JSON.parse(storedData);
+            setLoggedIn(data);
+        } else {
+            // Garante que a mensagem de erro esteja oculta na primeira carga
+            loginError.style.display = 'none'; 
+        }
+    })();
 </script>
 </body>
 </html>
+
 
