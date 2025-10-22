@@ -75,7 +75,6 @@
             width: 100%;
             height: 100%;
             
-            /* Display flex é forçado no inline do HTML, mas mantido aqui */
             display: flex; 
             flex-direction: column;
             justify-content: center;
@@ -309,7 +308,9 @@
         isLoggedIn = true;
         userData = data;
         userDisplayName.textContent = data.nome;
+        // Oculta a tela de login
         loginScreen.style.display = 'none';
+        // Exibe a tela de chat
         chatScreen.style.display = 'flex';
     }
 
@@ -331,17 +332,9 @@
         loginScreen.style.display = 'flex';
     }
 
+    // A lógica de checkAutoLogin() foi removida para garantir que a tela de login apareça primeiro.
+    
     // --- FUNÇÕES DE LOGIN ---
-
-    function checkAutoLogin() {
-        const storedData = localStorage.getItem('user_data');
-        if (storedData) {
-            const data = JSON.parse(storedData);
-            setLoggedIn(data);
-        } else {
-            loginScreen.style.display = 'flex'; 
-        }
-    }
 
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -362,7 +355,8 @@
             const data = await response.json();
 
             if (response.ok) {
-                localStorage.setItem('user_data', JSON.stringify(data.user));
+                // Guarda os dados no localStorage APENAS após o login
+                localStorage.setItem('user_data', JSON.stringify(data.user)); 
                 setLoggedIn(data.user);
             } else {
                 loginError.textContent = data.message || 'Erro de autenticação.';
@@ -459,7 +453,8 @@
     });
 
     // --- INICIALIZAÇÃO ---
-    checkAutoLogin();
+    // A chamada para checkAutoLogin() foi removida. O estado inicial agora é definido
+    // apenas pelo HTML/CSS, garantindo que o login screen apareça.
 </script>
 </body>
 </html>
