@@ -23,12 +23,13 @@
             font-family: var(--font-main);
             color: var(--color-white);
             background-color: var(--color-black-bg);
+            /* Importante: Centraliza o container da aplicação */
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             
-            /* Fundo da Imagem da Cidade P&B (background.jpg) - Estilo do Chat */
+            /* Fundo da Imagem da Cidade P&B (background.jpg) */
             background-image: url('static/background.jpg'); 
             background-size: cover;
             background-position: center;
@@ -48,25 +49,29 @@
             z-index: -1;
         }
 
-        /* Container principal com dimensões e z-index alto */
+        /* 🟢 CORREÇÃO CRÍTICA AQUI: */
         #main-app-container {
+            /* Garante uma largura e altura mínima para não colapsar */
             width: 90%;
             max-width: 600px;
+            height: 90vh; 
+            max-height: 800px;
+            
             background-color: var(--color-darker-bg);
             border-radius: 12px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
             
-            height: 90vh; 
-            max-height: 800px;
-            
             position: relative; 
             z-index: 100;
-            display: flex;
+            /* Garante que o container interno use Flexbox corretamente */
+            display: flex; 
             flex-direction: column;
+            overflow: hidden; /* Oculta barras de rolagem desnecessárias */
         }
         
         /* --- TELA DE LOGIN --- */
         #login-screen {
+            /* Ocupa todo o espaço do #main-app-container */
             position: absolute; 
             top: 0;
             left: 0;
@@ -81,7 +86,6 @@
             padding: 40px;
             text-align: center;
             z-index: 20; 
-            
             background-color: var(--color-darker-bg);
             box-sizing: border-box; 
         }
@@ -96,7 +100,7 @@
             height: 100%;
             /* IMAGEM joker_background.jpg */
             background-image: url('static/joker_background.jpg'); 
-            /* CORREÇÃO 1: Garante que a imagem inteira seja visível */
+            /* ✅ Correção do Fundo: Garante que a imagem inteira seja visível */
             background-size: contain; 
             background-position: center;
             background-repeat: no-repeat;
@@ -112,7 +116,7 @@
             text-shadow: 0 0 5px var(--color-red);
         }
         
-        /* CORREÇÃO 2: Garante que o parágrafo tenha largura suficiente para não espremer */
+        /* ✅ Correção do Layout: Garante que o parágrafo tenha largura suficiente */
         #login-screen p {
             width: 80%;
             max-width: 300px;
@@ -125,8 +129,7 @@
             z-index: 2;
             width: 80%;
             max-width: 300px;
-             /* CORREÇÃO 3: Garante que o formulário nunca fique menor que 200px */
-            min-width: 200px; 
+            min-width: 250px; /* Garante que o formulário não colapse */
         }
 
         #login-form input {
@@ -160,9 +163,10 @@
         #chat-screen {
             display: none; 
             flex-direction: column;
-            flex-grow: 1;
+            /* 🟢 CORREÇÃO: Ocupa todo o espaço do Flexbox (90vh) */
+            flex-grow: 1; 
             width: 100%;
-            height: 100%;
+            height: 100%; /* Isso garante que ele use 100% do pai que é 90vh */
             z-index: 5;
             
             position: absolute; 
@@ -179,6 +183,8 @@
             font-size: 1.2em;
             font-weight: bold;
             text-align: center;
+            /* 🟢 CORREÇÃO: Garante que o conteúdo (bem-vindo e botão) não colapsem */
+            min-height: 50px; 
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -191,6 +197,7 @@
             padding: 5px 10px;
             cursor: pointer;
             font-size: 0.8em;
+            white-space: nowrap;
         }
 
         #chat-box {
@@ -198,7 +205,7 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            flex-grow: 1;
+            flex-grow: 1; /* Permite que a caixa de chat cresça e use o espaço restante */
         }
 
         .message {
@@ -348,10 +355,9 @@
         const senha = document.getElementById('password-input').value;
 
         loginError.style.display = 'none';
-        loginError.textContent = 'RA ou Senha inválidos.'; // Reset message
+        loginError.textContent = 'RA ou Senha inválidos.'; 
 
         try {
-            // Rota /login no app.py (precisa ser adicionada)
             const response = await fetch('/login', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -361,13 +367,11 @@
             const data = await response.json();
 
             if (response.ok) { 
-                // Assumindo que a rota /login retorna os dados do usuário.
                 const userData = data.user;
                 localStorage.setItem('user_data', JSON.stringify(userData)); 
                 setLoggedIn(userData);
                 
             } else {
-                // Se a rota /login falhar, mostra o erro.
                 loginError.textContent = data.message || 'RA ou Senha inválidos.';
                 loginError.style.display = 'block';
             }
