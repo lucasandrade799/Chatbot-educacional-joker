@@ -27,9 +27,8 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            overflow: hidden;
             
-            /* Fundo da Imagem da Cidade P&B */
+            /* Fundo da Imagem da Cidade P&B (background.jpg) - Estilo do Chat */
             background-image: url('static/background.jpg'); 
             background-size: cover;
             background-position: center;
@@ -49,7 +48,7 @@
             z-index: -1;
         }
 
-        /* CORREÇÃO: Container principal com dimensões e position: relative */
+        /* Container principal com dimensões e z-index alto */
         #main-app-container {
             width: 90%;
             max-width: 600px;
@@ -61,7 +60,7 @@
             max-height: 800px;
             
             position: relative; 
-            z-index: 10;
+            z-index: 100;
             display: flex;
             flex-direction: column;
         }
@@ -75,6 +74,7 @@
             width: 100%;
             height: 100%;
             
+            /* Estilo inline no HTML força display: flex */
             display: flex; 
             flex-direction: column;
             justify-content: center;
@@ -95,6 +95,7 @@
             left: 0;
             width: 100%;
             height: 100%;
+            /* IMAGEM joker_background.jpg */
             background-image: url('static/joker_background.jpg'); 
             background-size: cover;
             background-position: center;
@@ -154,7 +155,6 @@
             height: 100%;
             z-index: 5;
             
-            /* Garante que o chat preencha todo o container principal e cubra o login */
             position: absolute; 
             top: 0;
             left: 0;
@@ -331,10 +331,10 @@
         chatScreen.style.display = 'none';
         loginScreen.style.display = 'flex';
     }
-
-    // A lógica de checkAutoLogin() foi removida para garantir que a tela de login apareça primeiro.
     
     // --- FUNÇÕES DE LOGIN ---
+
+    // A função checkAutoLogin foi removida para garantir que a tela de login apareça primeiro.
 
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -355,7 +355,6 @@
             const data = await response.json();
 
             if (response.ok) {
-                // Guarda os dados no localStorage APENAS após o login
                 localStorage.setItem('user_data', JSON.stringify(data.user)); 
                 setLoggedIn(data.user);
             } else {
@@ -399,7 +398,7 @@
 
     async function sendMessage() {
         const messageText = userInput.value.trim();
-        if (!messageText || !isLoggedIn) return;
+        if (!messageText || !isLoggedIn) return; // Garante que o usuário esteja logado
 
         appendMessage(messageText, 'user');
         userInput.value = '';
@@ -453,8 +452,10 @@
     });
 
     // --- INICIALIZAÇÃO ---
-    // A chamada para checkAutoLogin() foi removida. O estado inicial agora é definido
-    // apenas pelo HTML/CSS, garantindo que o login screen apareça.
+    // Removemos o auto-login. A tela de login é exibida por padrão (CSS/HTML inline).
+    // Para que o login funcione, você precisa implementar a rota /login no seu app.py,
+    // que valide o RA e senha.
 </script>
 </body>
 </html>
+
