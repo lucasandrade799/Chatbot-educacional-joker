@@ -18,16 +18,16 @@
         
         /* --- Estilo Global (Fundo do Chat) --- */
         body, html {
-            height: 100%;
+            /* 🔥 CORREÇÃO: Removido height: 100% para evitar conflitos de Flexbox */
             margin: 0;
             font-family: var(--font-main);
             color: var(--color-white);
             background-color: var(--color-black-bg);
-            /* Importante: Centraliza o container da aplicação */
+            
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            min-height: 100vh; /* Mantém a altura total da tela */
             
             /* Fundo da Imagem da Cidade P&B (background.jpg) */
             background-image: url('static/background.jpg'); 
@@ -51,8 +51,10 @@
 
         /* 🟢 CORREÇÃO CRÍTICA AQUI: Define dimensões fixas e impede o colapso */
         #main-app-container {
+            /* 🔥 NOVA CORREÇÃO: Garante uma largura mínima absoluta */
+            min-width: 320px; 
             width: 90%;
-            max-width: 600px; /* Largura máxima boa para um chat */
+            max-width: 600px;
             height: 90vh; 
             max-height: 800px;
             
@@ -66,13 +68,12 @@
             flex-direction: column;
             overflow: hidden; 
             
-            /* 🔥 CORREÇÃO PRINCIPAL: Impede que o container seja espremido pelo Flexbox pai (o <body>) */
+            /* Impede que o container seja espremido pelo Flexbox pai (o <body>) */
             flex-shrink: 0; 
         }
         
         /* --- TELA DE LOGIN --- */
         #login-screen {
-            /* Ocupa todo o espaço do #main-app-container */
             position: absolute; 
             top: 0;
             left: 0;
@@ -115,7 +116,7 @@
             text-shadow: 0 0 5px var(--color-red);
         }
         
-        /* ✅ Correção do Layout: Garante que o parágrafo tenha largura suficiente */
+        /* Garante que o parágrafo tenha largura suficiente */
         #login-screen p {
             width: 80%;
             max-width: 300px;
