@@ -194,24 +194,26 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
         return {"status": "error", "message": f"Erro na consulta ao banco de dados: {e}"}
 
 def buscar_material_estudo_api(topico: str) -> dict:
-    """OPERAÇÃO 2: Gera material usando o Gemini e retorna a resposta."""
+    """OPERAÇÃO 2: Gera material usando o Gemini e retorna a resposta. (Com Google Search ativado)"""
     if not client:
         return {"status": "error", "message": "A API do Gemini não está configurada corretamente."}
 
+    # PROMPT ATUALIZADO para solicitar links e ativar o Google Search.
     prompt = (
-    f"Gere um material de estudo conciso e focado para o tópico '{topico}'. "
-    "Inclua:\n"
-    "1. Breve resumo.\n"
-    "2. Três pontos chave.\n"
-    "3. Um exercício prático (com resposta).\n"
-    "4. **Busque na web** e adicione **2 sugestões de links relevantes (vídeo-aulas ou artigos) sobre o tópico, formatados como links Markdown [Título](URL)**. "
-    "Responda em português. Mantenha o tom acadêmico-informal."
-)
+        f"Gere um material de estudo conciso e focado para o tópico '{topico}'. "
+        "Inclua:\n"
+        "1. Breve resumo.\n"
+        "2. Três pontos chave.\n"
+        "3. Um exercício prático (com resposta).\n"
+        "4. **Busque na web** e adicione **2 sugestões de links relevantes (vídeo-aulas ou artigos) sobre o tópico, formatados como links Markdown [Título](URL)**. "
+        "Responda em português. Mantenha o tom acadêmico-informal."
+    )
 
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
+            # CONFIG CORRETO: Ativa o Google Search como ferramenta do modelo.
             config=GenerateContentConfig(tools=[{"google_search": {}}])
         )
 
@@ -247,20 +249,22 @@ def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
     """
     Usa o Gemini para interpretar a intenção do usuário (Function Calling),
     executa a função apropriada (SQL ou Gemini) e gera a resposta final em texto.
+    (Indentação corrigida)
     """
 
     if not client:
         return "❌ Desculpe, a conexão com a inteligência artificial está temporariamente indisponível."
 
-prompt_ferramenta = (
-    "O usuário enviou a seguinte mensagem: '{}'. Sua principal função é responder como um assistente acadêmico "
-    "com a personalidade do 'Joker' de Persona 5: inteligente, sarcástico e informativo. \n\n"
-    "**Instruções para Ferramentas:**\n"
-    "1. Se o usuário pedir especificamente por um RA, notas ou histórico, use 'verificar_historico_academico'.\n"
-    "2. Se o usuário pedir um **material de estudo/resumo/explicação** sobre um **tópico específico** (ex: 'Me ensine sobre Java', 'O que é Geopolítica?'), use a função 'gerar_material_estudo'.\n"
-    "3. Para **qualquer outra pergunta abrangente** (Ex: 'Como foi seu dia?', 'Me conte uma piada', 'O que é uma linguagem de programação?'), ou se a função for desnecessária/impossível, **RESPONDA DIRETAMENTE com o seu estilo de personalidade**.\n"
-    "Em caso de dados faltantes (ex: RA), peça-os. \n\n"
-).format(mensagem_usuario)
+    # PROMPT DE ROTEAMENTO: instrui o Gemini a decidir se usa as ferramentas ou responde diretamente.
+    prompt_ferramenta = (
+        "O usuário enviou a seguinte mensagem: '{}'. Sua principal função é responder como um assistente acadêmico "
+        "com a personalidade do 'Joker' de Persona 5: inteligente, sarcástico e informativo. \n\n"
+        "**Instruções para Ferramentas:**\n"
+        "1. Se o usuário pedir especificamente por um RA, notas ou histórico, use 'verificar_historico_academico'.\n"
+        "2. Se o usuário pedir um **material de estudo/resumo/explicação** sobre um **tópico específico** (ex: 'Me ensine sobre Java', 'O que é Geopolítica?'), use a função 'gerar_material_estudo'.\n"
+        "3. Para **qualquer outra pergunta abrangente** (Ex: 'Como foi seu dia?', 'Me conte uma piada', 'O que é uma linguagem de programação?'), ou se a função for desnecessária/impossível, **RESPONDA DIRETAMENTE com o seu estilo de personalidade**.\n"
+        "Em caso de dados faltantes (ex: RA), peça-os. \n\n"
+    ).format(mensagem_usuario)
 
     # 1. Envia a mensagem com as ferramentas para o Gemini
     try:
@@ -435,4 +439,3 @@ init_db()
 if __name__ == '__main__':
     # Certifique-se de que o Flask rode na porta 5000, conforme configurado no front-end.
     app.run(debug=True)
-
