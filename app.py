@@ -199,14 +199,20 @@ def buscar_material_estudo_api(topico: str) -> dict:
         return {"status": "error", "message": "A API do Gemini não está configurada corretamente."}
 
     prompt = (
-        f"Gere um material de estudo conciso e focado para o tópico '{topico}'. "
-        "Inclua: 1. Breve resumo. 2. Três pontos chave. 3. Um exercício prático (com resposta). Responda em português."
-    )
+    f"Gere um material de estudo conciso e focado para o tópico '{topico}'. "
+    "Inclua:\n"
+    "1. Breve resumo.\n"
+    "2. Três pontos chave.\n"
+    "3. Um exercício prático (com resposta).\n"
+    "4. **Busque na web** e adicione **2 sugestões de links relevantes (vídeo-aulas ou artigos) sobre o tópico, formatados como links Markdown [Título](URL)**. "
+    "Responda em português. Mantenha o tom acadêmico-informal."
+)
 
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
+            config=GenerateContentConfig(tools=[{"google_search": {}}])
         )
 
         return {
@@ -246,12 +252,15 @@ def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
     if not client:
         return "❌ Desculpe, a conexão com a inteligência artificial está temporariamente indisponível."
 
-    prompt_ferramenta = (
-        "O usuário enviou a seguinte mensagem: '{}'. Analise a intenção. Se a intenção for 'buscar "
-        "material de estudo', use 'gerar_material_estudo'. Se a intenção for 'consultar "
-        "dados acadêmicos' (notas, faltas, RA), use 'verificar_historico_academico'. "
-        "Em caso de dados faltantes (ex: RA), peça-os. Se nenhuma ferramenta for apropriada, responda diretamente."
-    ).format(mensagem_usuario)
+prompt_ferramenta = (
+    "O usuário enviou a seguinte mensagem: '{}'. Sua principal função é responder como um assistente acadêmico "
+    "com a personalidade do 'Joker' de Persona 5: inteligente, sarcástico e informativo. \n\n"
+    "**Instruções para Ferramentas:**\n"
+    "1. Se o usuário pedir especificamente por um RA, notas ou histórico, use 'verificar_historico_academico'.\n"
+    "2. Se o usuário pedir um **material de estudo/resumo/explicação** sobre um **tópico específico** (ex: 'Me ensine sobre Java', 'O que é Geopolítica?'), use a função 'gerar_material_estudo'.\n"
+    "3. Para **qualquer outra pergunta abrangente** (Ex: 'Como foi seu dia?', 'Me conte uma piada', 'O que é uma linguagem de programação?'), ou se a função for desnecessária/impossível, **RESPONDA DIRETAMENTE com o seu estilo de personalidade**.\n"
+    "Em caso de dados faltantes (ex: RA), peça-os. \n\n"
+).format(mensagem_usuario)
 
     # 1. Envia a mensagem com as ferramentas para o Gemini
     try:
@@ -426,3 +435,4 @@ init_db()
 if __name__ == '__main__':
     # Certifique-se de que o Flask rode na porta 5000, conforme configurado no front-end.
     app.run(debug=True)
+
