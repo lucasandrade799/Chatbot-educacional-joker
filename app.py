@@ -439,7 +439,7 @@ def lancar_faltas_api(ra_aluno: str, nome_disciplina: str, faltas: int) -> dict:
 
 # --- OPERAÇÃO DE LEITURA (Consulta) ---
 
-def verificar_dados_curso_api(ra_aluno: str) -> dict:
+def verificar_historico_academico(ra_aluno: str) -> dict:
     """OPERAÇÃO 1: Busca o histórico ajustado para as regras de PIM/ED/AVAS."""
     ra_aluno = ra_aluno.strip().upper()
 
@@ -554,7 +554,7 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
         conn.close()
         return {"status": "error", "message": f"Erro na consulta ao banco de dados: {e}"}
 
-def buscar_material_estudo_api(topico: str) -> dict:
+def gerar_material_estudo(topico: str) -> dict:
     """OPERAÇÃO 2: Gera material usando o Gemini e retorna a resposta. (Com Google Search ativado)"""
     if not client:
         return {"status": "error", "message": "A API do Gemini não está configurada corretamente."}
@@ -833,4 +833,5 @@ init_db()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
