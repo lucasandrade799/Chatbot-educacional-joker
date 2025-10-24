@@ -554,7 +554,7 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
         conn.close()
         return {"status": "error", "message": f"Erro na consulta ao banco de dados: {e}"}
 
-def gerar_material_estudo(topico: str) -> dict:
+def buscar_material_estudo_api(topico: str) -> dict:
     """OPERAÇÃO 2: Gera material usando o Gemini e retorna a resposta. (Com Google Search ativado)"""
     if not client:
         return {"status": "error", "message": "A API do Gemini não está configurada corretamente."}
@@ -633,7 +633,7 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
         "O usuário enviou a seguinte mensagem: '{}'. \n\n"
         "**Instruções para Ferramentas:**\n"
         "1. Se o usuário pedir especificamente por um RA, notas ou histórico, use 'verificar_dados_curso_api'.\n"
-        "2. Se o usuário pedir um material de estudo/resumo/explicação sobre um tópico, use 'gerar_material_estudo'.\n"
+        "2. Se o usuário pedir um material de estudo/resumo/explicação sobre um tópico, use 'buscar_material_estudo_api'.\n"
         "3. Se o professor pedir para lançar NP1/NP2, use 'lancar_nota_np'.\n"
         "4. Se o professor pedir para lançar PIM, use 'lancar_nota_pim'.\n"
         "5. Se o professor pedir para marcar ED como concluído, use 'marcar_ed_concluido'.\n"
@@ -833,6 +833,7 @@ init_db()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
