@@ -9,23 +9,25 @@ from twilio.twiml.messaging_response import MessagingResponse
 from flask_cors import CORS
 
 # --- VARIÁVEIS DE CONFIGURAÇÃO E CHAVE API ---
-# Nota: Lembre-se de configurar a variável de ambiente GEMINI_API_KEY
 API_KEY_GEMINI = os.environ.get('GEMINI_API_KEY')
 DATABASE_NAME = 'BDchatbot.db'
 
-# --- 1. SCRIPT SQL COMPLETO ---
+# --- 1. SCRIPT SQL COMPLETO (FINAL: Faltas NULL para todos) ---
 SQL_SCRIPT_CONTENT = """
--- CRIAÇÃO DAS TABELAS (Ajustado para SQLite: INTEGER PRIMARY KEY AUTOINCREMENT)
+-- CRIAÇÃO DAS TABELAS
 CREATE TABLE IF NOT EXISTS Alunos (
     id_aluno INTEGER PRIMARY KEY AUTOINCREMENT,
     RA VARCHAR(10) NOT NULL UNIQUE,
-    Nome_Completo VARCHAR(100) NOT NULL
+    Nome_Completo VARCHAR(100) NOT NULL,
+    Tipo_Usuario VARCHAR(10) NOT NULL DEFAULT 'Aluno',
+    Codigo_Seguranca VARCHAR(6) NULL
 );
 
 CREATE TABLE IF NOT EXISTS Disciplinas (
     id_disciplina INTEGER PRIMARY KEY AUTOINCREMENT,
     Nome_Disciplina VARCHAR(100) NOT NULL,
     Semestre INT NOT NULL,
+    Tipo_Avaliacao VARCHAR(10) NOT NULL, -- AVAS, ED, PIM
     UNIQUE (Nome_Disciplina, Semestre)
 );
 
@@ -33,75 +35,60 @@ CREATE TABLE IF NOT EXISTS Historico_Academico (
     id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
     fk_id_aluno INT NOT NULL,
     fk_id_disciplina INT NOT NULL,
-    Nota DECIMAL(4, 2) DEFAULT 0.00,
-    Faltas INT DEFAULT 0,
-    Estudos_Disciplinares_Concluido BOOLEAN DEFAULT 0,
-    AVAS_Concluido BOOLEAN DEFAULT 0,
+    NP1 DECIMAL(4, 2) NULL, -- Nota da 1ª Prova (NULL para PIM/ED)
+    NP2 DECIMAL(4, 2) NULL, -- Nota da 2ª Prova (NULL para PIM/ED)
+    Media_Final DECIMAL(4, 2) NULL, -- Média ou Nota PIM/Status de ED
+    Faltas INT NULL, -- Faltas 
     FOREIGN KEY (fk_id_aluno) REFERENCES Alunos(id_aluno),
     FOREIGN KEY (fk_id_disciplina) REFERENCES Disciplinas(id_disciplina),
     UNIQUE (fk_id_aluno, fk_id_disciplina)
 );
 
--- POPULANDO A TABELA DISCIPLINAS
-INSERT OR IGNORE INTO Disciplinas (Nome_Disciplina, Semestre) VALUES
-('Introdução à Programação', 1), ('Lógica de Computação', 1), ('Fundamentos de Sistemas', 1), ('Português e Redação', 1),
-('Estruturas de Dados', 2), ('Banco de Dados I', 2), ('Arquitetura de Computadores', 2), ('Ética e Cidadania', 2);
+-- POPULANDO A TABELA DISCIPLINAS (4 AVAS, 4 ED, 1 PIM por semestre)
+INSERT OR IGNORE INTO Disciplinas (Nome_Disciplina, Semestre, Tipo_Avaliacao) VALUES
+-- Semestre 1
+('Introdução à Programação', 1, 'AVAS'), 
+('Lógica de Programação', 1, 'AVAS'), 
+('Fundamentos de Sistemas', 1, 'AVAS'), 
+('Matemática Discreta', 1, 'AVAS'), 
+('Arquitetura de Computadores', 1, 'ED'), 
+('Redes de Computadores', 1, 'ED'),       
+('Comunicação Empresarial', 1, 'ED'),     
+('Ética e Cidadania', 1, 'ED'),           
+('PIM I', 1, 'PIM'), 
+
+-- Semestre 2
+('Estruturas de Dados', 2, 'AVAS'),
+('Banco de Dados I', 2, 'AVAS'), 
+('Sistemas Operacionais', 2, 'AVAS'), 
+('Álgebra Linear', 2, 'AVAS'), 
+('Engenharia de Software', 2, 'ED'), 
+('Gestão de Projetos', 2, 'ED'), 
+('Análise de Sistemas', 2, 'ED'), 
+('Tópicos Avançados', 2, 'ED'),
+('PIM II', 2, 'PIM');
 
 -- POPULANDO A TABELA ALUNOS
-INSERT OR IGNORE INTO Alunos (RA, Nome_Completo) VALUES
-('R3487E5', 'Matheus de Assis Alves'), ('R6738H5', 'Matheus Balzi da Silva'), ('R818888', 'Lucas Gabriel da Silva Gardezan'),
-('H755247', 'Matheus Henrique Castro de Oliveira'), ('R848140', 'Thainanda Alves Monteiro'), ('820793', 'Lucas da Silva Andrade');
+INSERT OR IGNORE INTO Alunos (RA, Nome_Completo, Tipo_Usuario, Codigo_Seguranca) VALUES
+('R3487E5', 'Matheus de Assis Alves', 'Aluno', NULL), 
+('R6738H5', 'Matheus Balzi da Silva', 'Aluno', NULL), 
+('R818888', 'Lucas Gabriel da Silva Gardezan', 'Aluno', NULL),
+('H755247', 'Matheus Henrique Castro de Oliveira', 'Aluno', NULL), 
+('R848140', 'Thainanda Alves Monteiro', 'Aluno', NULL), 
+('820793', 'Lucas da Silva Andrade', 'Aluno', NULL),
+('P12345', 'Prof. Sae Niijima', 'Professor', '010101'); 
 
--- REGISTRO DO HISTÓRICO ACADÊMICO
-INSERT OR IGNORE INTO Historico_Academico (fk_id_aluno, fk_id_disciplina, Nota, Faltas, Estudos_Disciplinares_Concluido, AVAS_Concluido) VALUES
-((SELECT id_aluno FROM Alunos WHERE RA = 'R3487E5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Introdução à Programação' AND Semestre = 1), 8.5, 2, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R3487E5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Lógica de Computação' AND Semestre = 1), 7.0, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R3487E5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Fundamentos de Sistemas' AND Semestre = 1), 9.2, 1, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R3487E5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Português e Redação' AND Semestre = 1), 6.5, 4, 0, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R3487E5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Estruturas de Dados' AND Semestre = 2), 7.5, 3, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R3487E5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Banco de Dados I' AND Semestre = 2), 8.8, 1, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R3487E5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Arquitetura de Computadores' AND Semestre = 2), 6.9, 5, 1, 0),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R3487E5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Ética e Cidadania' AND Semestre = 2), 9.5, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R6738H5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Introdução à Programação' AND Semestre = 1), 5.5, 8, 1, 0),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R6738H5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Lógica de Computação' AND Semestre = 1), 7.8, 1, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R6738H5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Fundamentos de Sistemas' AND Semestre = 1), 8.0, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R6738H5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Português e Redação' AND Semestre = 1), 9.0, 3, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R6738H5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Estruturas de Dados' AND Semestre = 2), 6.0, 7, 0, 0),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R6738H5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Banco de Dados I' AND Semestre = 2), 7.2, 4, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R6738H5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Arquitetura de Computadores' AND Semestre = 2), 8.5, 2, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R6738H5'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Ética e Cidadania' AND Semestre = 2), 5.0, 9, 0, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R818888'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Introdução à Programação' AND Semestre = 1), 9.5, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R818888'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Lógica de Computação' AND Semestre = 1), 8.9, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R818888'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Fundamentos de Sistemas' AND Semestre = 1), 9.8, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R818888'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Português e Redação' AND Semestre = 1), 9.1, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R818888'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Estruturas de Dados' AND Semestre = 2), 10.0, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE Alunos.RA = 'R818888'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Banco de Dados I' AND Semestre = 2), 9.5, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R818888'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Arquitetura de Computadores' AND Semestre = 2), 9.9, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R818888'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Ética e Cidadania' AND Semestre = 2), 9.0, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'H755247'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Introdução à Programação' AND Semestre = 1), 6.0, 5, 0, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'H755247'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Lógica de Computação' AND Semestre = 1), 5.5, 7, 0, 0),
-((SELECT id_aluno FROM Alunos WHERE RA = 'H755247'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Fundamentos de Sistemas' AND Semestre = 1), 7.2, 2, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'H755247'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Português e Redação' AND Semestre = 1), 8.5, 1, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'H755247'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Estruturas de Dados' AND Semestre = 2), 5.5, 8, 0, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'H755247'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Banco de Dados I' AND Semestre = 2), 6.5, 5, 1, 0),
-((SELECT id_aluno FROM Alunos WHERE RA = 'H755247'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Arquitetura de Computadores' AND Semestre = 2), 7.8, 3, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'H755247'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Ética e Cidadania' AND Semestre = 2), 8.0, 1, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R848140'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Introdução à Programação' AND Semestre = 1), 9.8, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R848140'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Lógica de Computação' AND Semestre = 1), 9.5, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R848140'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Fundamentos de Sistemas' AND Semestre = 1), 8.0, 1, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R848140'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Português e Redação' AND Semestre = 1), 7.9, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R848140'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Estruturas de Dados' AND Semestre = 2), 9.0, 1, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R848140'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Banco de Dados I' AND Semestre = 2), 8.5, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R848140'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Arquitetura de Computadores' AND Semestre = 2), 7.5, 2, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = 'R848140'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Ética e Cidadania' AND Semestre = 2), 9.3, 0, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = '820793'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Introdução à Programação' AND Semestre = 1), 7.7, 3, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = '820793'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Lógica de Computação' AND Semestre = 1), 6.9, 4, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = '820793'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Fundamentos de Sistemas' AND Semestre = 1), 8.8, 1, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = '820793'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Português e Redação' AND Semestre = 1), 7.5, 2, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = '820793'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Estruturas de Dados' AND Semestre = 2), 6.8, 5, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = '820793'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Banco de Dados I' AND Semestre = 2), 7.0, 3, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = '820793'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Arquitetura de Computadores' AND Semestre = 2), 8.2, 1, 1, 1),
-((SELECT id_aluno FROM Alunos WHERE RA = '820793'), (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = 'Ética e Cidadania' AND Semestre = 2), 7.9, 2, 1, 1);
+-- REGISTRO DO HISTÓRICO ACADÊMICO (Todos os campos de notas e faltas são NULL/Indefinidos)
+INSERT OR IGNORE INTO Historico_Academico (fk_id_aluno, fk_id_disciplina, NP1, NP2, Media_Final, Faltas)
+SELECT 
+    A.id_aluno, 
+    D.id_disciplina,
+    CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL ELSE NULL END AS NP1, 
+    CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL ELSE NULL END AS NP2, 
+    NULL AS Media_Final, 
+    NULL AS Faltas       
+FROM Alunos A
+JOIN Disciplinas D;
 """
 
 # --- INICIALIZAÇÃO DO FLASK E GEMINI ---
@@ -109,7 +96,6 @@ app = Flask(__name__)
 CORS(app)
 client = None
 
-# Inicializa o cliente Gemini
 if API_KEY_GEMINI:
     try:
         client = genai.Client(api_key=API_KEY_GEMINI)
@@ -142,21 +128,328 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-# --- 3. FUNÇÕES DE OPERAÇÃO (LÓGICA CORE) ---
+def formatar_valor(valor):
+    """Auxiliar para formatar números ou retornar None."""
+    if valor is None:
+        return None
+    try:
+        return f"{float(valor):.2f}"
+    except (ValueError, TypeError):
+        return None
+
+def calcular_media_final(np1, np2, pim_nota):
+    """
+    Calcula a média final usando a fórmula: (NP1*4 + NP2*4 + PIM*2) / 10
+    Retorna float se cálculo possível, senão None.
+    """
+    if np1 is None or np2 is None or pim_nota is None:
+        return None  # Não é possível calcular
+    try:
+        np1 = float(np1)
+        np2 = float(np2)
+        pim_nota = float(pim_nota)
+        media = (np1 * 4 + np2 * 4 + pim_nota * 2) / 10
+        return round(media, 2)
+    except (ValueError, TypeError):
+        return None
+    
+def _get_pim_nota(conn, id_aluno, semestre):
+    """Busca a nota PIM de um aluno para um semestre específico."""
+    pim_sql = """
+    SELECT H.Media_Final 
+    FROM Historico_Academico H
+    JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
+    WHERE H.fk_id_aluno = ? AND D.Semestre = ? AND D.Tipo_Avaliacao = 'PIM'
+    """
+    cursor = conn.cursor()
+    cursor.execute(pim_sql, (id_aluno, semestre))
+    pim_result = cursor.fetchone()
+    # A nota PIM é armazenada no campo Media_Final da disciplina PIM
+    return pim_result['Media_Final'] if pim_result and pim_result['Media_Final'] is not None else None
+
+def _recalcular_e_salvar_media_avas(conn, id_aluno, nome_disciplina):
+    """
+    Busca NP1, NP2 e PIM (do semestre) e recalcula/salva a Media_Final
+    para uma disciplina AVAS.
+    """
+    sql_dados = """
+    SELECT 
+        H.id_registro, H.NP1, H.NP2, D.Semestre
+    FROM Historico_Academico H
+    JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
+    WHERE H.fk_id_aluno = ? AND D.Nome_Disciplina = ? AND D.Tipo_Avaliacao = 'AVAS';
+    """
+    cursor = conn.cursor()
+    cursor.execute(sql_dados, (id_aluno, nome_disciplina))
+    reg = cursor.fetchone()
+
+    if not reg:
+        return False, "Disciplina não encontrada ou não é AVAS."
+
+    pim_nota = _get_pim_nota(conn, id_aluno, reg['Semestre'])
+    
+    media = calcular_media_final(reg['NP1'], reg['NP2'], pim_nota)
+    
+    # Salva a nova média, ou NULL se não puder ser calculada
+    sql_update = """
+    UPDATE Historico_Academico SET Media_Final = ? WHERE id_registro = ?
+    """
+    cursor.execute(sql_update, (media, reg['id_registro']))
+    conn.commit()
+    
+    return True, media
+
+
+def _recalcular_todas_medias_avas_do_semestre(conn, id_aluno, semestre):
+    """
+    Recalcula a média de TODAS as disciplinas AVAS de um semestre,
+    usando a nova nota PIM.
+    """
+    pim_nota = _get_pim_nota(conn, id_aluno, semestre)
+    
+    sql_disciplinas_avas = """
+    SELECT 
+        H.id_registro, H.NP1, H.NP2, D.Nome_Disciplina
+    FROM Historico_Academico H
+    JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
+    WHERE H.fk_id_aluno = ? AND D.Semestre = ? AND D.Tipo_Avaliacao = 'AVAS';
+    """
+    cursor = conn.cursor()
+    cursor.execute(sql_disciplinas_avas, (id_aluno, semestre))
+    registros_avas = cursor.fetchall()
+    
+    if not registros_avas:
+        return 0
+        
+    for reg in registros_avas:
+        media = calcular_media_final(reg['NP1'], reg['NP2'], pim_nota)
+        
+        sql_update = """
+        UPDATE Historico_Academico SET Media_Final = ? WHERE id_registro = ?
+        """
+        cursor.execute(sql_update, (media, reg['id_registro']))
+        
+    conn.commit()
+    return len(registros_avas)
+
+
+# --- 3. FUNÇÕES DE OPERAÇÃO (LÓGICA CORE: Leitura e Escrita) ---
+
+# --- OPERAÇÕES DE ESCRITA (Professor Tools) ---
+
+def lancar_nota_np_api(ra_aluno: str, nome_disciplina: str, np_qual: str, nota: float) -> dict:
+    """Lança a nota NP1 ou NP2 e recalcula a Média Final se possível."""
+    ra_aluno = ra_aluno.strip().upper()
+    nome_disciplina = nome_disciplina.strip()
+    np_qual = np_qual.strip().upper()
+
+    if np_qual not in ['NP1', 'NP2'] or not (0.0 <= nota <= 10.0):
+        return {"status": "error", "message": "Parâmetros inválidos. Use NP1 ou NP2 com nota entre 0.0 e 10.0."}
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # 1. Obter IDs e checar se é AVAS
+        sql_info = """
+        SELECT A.id_aluno, D.Tipo_Avaliacao 
+        FROM Alunos A
+        JOIN Historico_Academico H ON A.id_aluno = H.fk_id_aluno
+        JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
+        WHERE A.RA = ? AND D.Nome_Disciplina = ?;
+        """
+        cursor.execute(sql_info, (ra_aluno, nome_disciplina))
+        info = cursor.fetchone()
+
+        if not info:
+            conn.close()
+            return {"status": "error", "message": f"Aluno/Disciplina '{ra_aluno}'/'{nome_disciplina}' não encontrados."}
+        
+        if info['Tipo_Avaliacao'] != 'AVAS':
+            conn.close()
+            return {"status": "error", "message": f"Lançamento de NP1/NP2 só é permitido para matérias AVAS. '{nome_disciplina}' é {info['Tipo_Avaliacao']}."}
+
+        # 2. Atualizar nota NP
+        sql_update_np = f"""
+        UPDATE Historico_Academico 
+        SET {np_qual} = ?
+        WHERE fk_id_aluno = ? 
+        AND fk_id_disciplina = (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = ?);
+        """
+        cursor.execute(sql_update_np, (nota, info['id_aluno'], nome_disciplina))
+
+        # 3. Recalcular e salvar Media_Final (se possível)
+        sucesso, media = _recalcular_e_salvar_media_avas(conn, info['id_aluno'], nome_disciplina)
+        
+        conn.close()
+
+        status_media = f"Média Final calculada e salva: {media:.2f}" if media is not None else "Média Final pendente (PIM ou outra NP faltando)."
+        return {"status": "success", "message": f"Nota {np_qual} (R${nota:.2f}$) lançada para {nome_disciplina} ({ra_aluno}). {status_media}"}
+
+    except sqlite3.Error as e:
+        conn.close()
+        return {"status": "error", "message": f"Erro no lançamento da nota NP: {e}"}
+
+def lancar_nota_pim_api(ra_aluno: str, nome_disciplina_pim: str, nota: float) -> dict:
+    """Lança a nota PIM e recalcula a Média Final de todas as AVAS do semestre."""
+    ra_aluno = ra_aluno.strip().upper()
+    nome_disciplina_pim = nome_disciplina_pim.strip()
+
+    if not (0.0 <= nota <= 10.0):
+        return {"status": "error", "message": "Nota PIM inválida. Deve estar entre 0.0 e 10.0."}
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # 1. Obter IDs e checar se é PIM
+        sql_info = """
+        SELECT A.id_aluno, D.Tipo_Avaliacao, D.Semestre
+        FROM Alunos A
+        JOIN Historico_Academico H ON A.id_aluno = H.fk_id_aluno
+        JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
+        WHERE A.RA = ? AND D.Nome_Disciplina = ?;
+        """
+        cursor.execute(sql_info, (ra_aluno, nome_disciplina_pim))
+        info = cursor.fetchone()
+
+        if not info:
+            conn.close()
+            return {"status": "error", "message": f"Aluno/Disciplina PIM '{ra_aluno}'/'{nome_disciplina_pim}' não encontrados."}
+        
+        if info['Tipo_Avaliacao'] != 'PIM':
+            conn.close()
+            return {"status": "error", "message": f"'{nome_disciplina_pim}' não é uma disciplina PIM."}
+
+        # 2. Atualizar nota PIM (que fica no campo Media_Final)
+        sql_update_pim = """
+        UPDATE Historico_Academico 
+        SET Media_Final = ?
+        WHERE fk_id_aluno = ? 
+        AND fk_id_disciplina = (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = ?);
+        """
+        cursor.execute(sql_update_pim, (nota, info['id_aluno'], nome_disciplina_pim))
+
+        # 3. Recalcular e salvar Media_Final para todas as AVAS do semestre
+        count_avas = _recalcular_todas_medias_avas_do_semestre(conn, info['id_aluno'], info['Semestre'])
+        
+        conn.close()
+
+        return {"status": "success", "message": f"Nota PIM ({nota:.2f}) lançada para o semestre {info['Semestre']} ({ra_aluno}). {count_avas} Média(s) Final(is) AVAS recalculada(s)."}
+
+    except sqlite3.Error as e:
+        conn.close()
+        return {"status": "error", "message": f"Erro no lançamento da nota PIM: {e}"}
+
+def marcar_ed_concluido_api(ra_aluno: str, nome_disciplina_ed: str) -> dict:
+    """Marca uma disciplina ED como 'Feito' (usando Media_Final = 1.0 como flag)."""
+    ra_aluno = ra_aluno.strip().upper()
+    nome_disciplina_ed = nome_disciplina_ed.strip()
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 1. Obter IDs e checar se é ED
+        sql_info = """
+        SELECT A.id_aluno, D.Tipo_Avaliacao 
+        FROM Alunos A
+        JOIN Historico_Academico H ON A.id_aluno = H.fk_id_aluno
+        JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
+        WHERE A.RA = ? AND D.Nome_Disciplina = ?;
+        """
+        cursor.execute(sql_info, (ra_aluno, nome_disciplina_ed))
+        info = cursor.fetchone()
+
+        if not info:
+            conn.close()
+            return {"status": "error", "message": f"Aluno/Disciplina '{ra_aluno}'/'{nome_disciplina_ed}' não encontrados."}
+        
+        if info['Tipo_Avaliacao'] != 'ED':
+            conn.close()
+            return {"status": "error", "message": f"'{nome_disciplina_ed}' não é uma disciplina ED. Só é possível marcar status de conclusão para ED."}
+
+        # 2. Atualizar status (Media_Final = 1.0 como flag de conclusão)
+        sql_update_ed = """
+        UPDATE Historico_Academico 
+        SET Media_Final = 1.0
+        WHERE fk_id_aluno = ? 
+        AND fk_id_disciplina = (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = ?);
+        """
+        cursor.execute(sql_update_ed, (info['id_aluno'], nome_disciplina_ed))
+        conn.commit()
+        conn.close()
+
+        return {"status": "success", "message": f"Estudo Disciplinar '{nome_disciplina_ed}' marcado como concluído para o aluno {ra_aluno}."}
+
+    except sqlite3.Error as e:
+        conn.close()
+        return {"status": "error", "message": f"Erro ao marcar ED como concluído: {e}"}
+
+def lancar_faltas_api(ra_aluno: str, nome_disciplina: str, faltas: int) -> dict:
+    """Lança o número de faltas para uma disciplina."""
+    ra_aluno = ra_aluno.strip().upper()
+    nome_disciplina = nome_disciplina.strip()
+
+    if faltas < 0:
+        return {"status": "error", "message": "Número de faltas inválido."}
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 1. Obter IDs e checar se pode ter falta (o banco permite, mas o aviso é importante)
+        sql_info = """
+        SELECT A.id_aluno, D.Tipo_Avaliacao 
+        FROM Alunos A
+        JOIN Historico_Academico H ON A.id_aluno = H.fk_id_aluno
+        JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
+        WHERE A.RA = ? AND D.Nome_Disciplina = ?;
+        """
+        cursor.execute(sql_info, (ra_aluno, nome_disciplina))
+        info = cursor.fetchone()
+
+        if not info:
+            conn.close()
+            return {"status": "error", "message": f"Aluno/Disciplina '{ra_aluno}'/'{nome_disciplina}' não encontrados."}
+        
+        # 2. Atualizar faltas
+        sql_update_faltas = """
+        UPDATE Historico_Academico 
+        SET Faltas = ?
+        WHERE fk_id_aluno = ? 
+        AND fk_id_disciplina = (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = ?);
+        """
+        cursor.execute(sql_update_faltas, (faltas, info['id_aluno'], nome_disciplina))
+        conn.commit()
+        conn.close()
+        
+        aviso = ""
+        if info['Tipo_Avaliacao'] in ['AVAS', 'PIM', 'ED']:
+             aviso = f" (AVISO: '{nome_disciplina}' é {info['Tipo_Avaliacao']} e não costuma ter controle de faltas, mas o registro foi salvo.)"
+
+        return {"status": "success", "message": f"Lançadas {faltas} faltas para '{nome_disciplina}' ({ra_aluno}).{aviso}"}
+
+    except sqlite3.Error as e:
+        conn.close()
+        return {"status": "error", "message": f"Erro no lançamento de faltas: {e}"}
+
+
+# --- OPERAÇÃO DE LEITURA (Consulta) ---
 
 def verificar_dados_curso_api(ra_aluno: str) -> dict:
-    """OPERAÇÃO 1: Busca o histórico e retorna um dicionário de dados."""
+    """OPERAÇÃO 1: Busca o histórico ajustado para as regras de PIM/ED/AVAS."""
     ra_aluno = ra_aluno.strip().upper()
 
     comando_sql_join = """
     SELECT
-    A.Nome_Completo, D.Nome_Disciplina, D.Semestre,
-    H.Nota, H.Faltas, H.Estudos_Disciplinares_Concluido, H.AVAS_Concluido
+    A.Nome_Completo, A.id_aluno, D.Nome_Disciplina, D.Semestre, D.Tipo_Avaliacao,
+    H.NP1, H.NP2, H.Media_Final, H.Faltas
     FROM Historico_Academico H
     JOIN Alunos A ON H.fk_id_aluno = A.id_aluno
     JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
     WHERE A.RA = ?
-    ORDER BY D.Semestre, D.Nome_Disciplina;
+    ORDER BY D.Semestre, D.Tipo_Avaliacao DESC, D.Nome_Disciplina;
     """
 
     conn = get_db_connection()
@@ -168,25 +461,91 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
 
         if not registros:
             conn.close()
-            return {"status": "error", "message": f"O RA '{ra_aluno}' não foi encontrado ou não possui histórico registrado."}
+            cursor.execute("SELECT Nome_Completo, Tipo_Usuario FROM Alunos WHERE RA = ?", (ra_aluno,))
+            info_user = cursor.fetchone()
+            
+            if info_user:
+                 return {"status": "error", "message": f"O usuário '{info_user['Nome_Completo']}' ({ra_aluno}) não possui histórico acadêmico registrado."}
+            
+            return {"status": "error", "message": f"A credencial '{ra_aluno}' não foi encontrada."}
 
         historico = []
+        id_aluno = registros[0]['id_aluno']
+
         for reg in registros:
-            historico.append({
+            tipo = reg['Tipo_Avaliacao'].upper()
+            
+            np1_val = formatar_valor(reg['NP1'])
+            np2_val = formatar_valor(reg['NP2'])
+            media_val = formatar_valor(reg['Media_Final'])
+            faltas_val = reg['Faltas'] if reg['Faltas'] is not None else None
+
+            disciplina_info = {
                 "disciplina": reg['Nome_Disciplina'],
                 "semestre": reg['Semestre'],
-                "nota": float(f"{reg['Nota']:.2f}"),
-                "faltas": reg['Faltas'],
-                "ed_concluido": bool(reg['Estudos_Disciplinares_Concluido']),
-                "avas_concluido": bool(reg['AVAS_Concluido']),
-            })
+                "tipo_avaliacao": tipo,
+            }
+
+            if tipo == 'PIM':
+                # PIM: Somente uma nota (Media_Final).
+                disciplina_info.update({
+                    "nota_pim": media_val if media_val is not None else "Indefinida",
+                    "np1": "N/A",
+                    "np2": "N/A",
+                    "media_final": "N/A", # Não tem média final própria
+                    "faltas": "N/A",
+                    "observacao": "Nota de trabalho que compõe a média de todas as matérias AVAS do semestre."
+                })
+            elif tipo == 'ED':
+                # ED: Apenas status de conclusão (Media_Final != NULL -> Feito).
+                status_ed = "Feito" if reg['Media_Final'] is not None else "Não Feito"
+                
+                disciplina_info.update({
+                    "status_conclusao": status_ed,
+                    "np1": "N/A",
+                    "np2": "N/A",
+                    "media_final": "N/A",
+                    "faltas": "N/A",
+                    "observacao": "Obrigatória, sem nota. Status: Feito/Não Feito."
+                })
+            elif tipo == 'AVAS':
+                
+                pim_nota_semestre = _get_pim_nota(conn, id_aluno, reg['Semestre'])
+                media_display = media_val
+                
+                # Se a Media_Final não estiver salva, tenta calcular dinamicamente
+                if reg['Media_Final'] is None:
+                    calculated_media = calcular_media_final(reg['NP1'], reg['NP2'], pim_nota_semestre)
+                    media_display = formatar_valor(calculated_media) if calculated_media is not None else "Indefinida"
+                
+                # Trata faltas: se for NULL, exibe 'N/A'
+                faltas_exibicao = faltas_val if faltas_val is not None else "N/A"
+                
+                disciplina_info.update({
+                    "np1": np1_val if np1_val is not None else "Indefinida",
+                    "np2": np2_val if np2_val is not None else "Indefinida",
+                    "nota_pim_usada": formatar_valor(pim_nota_semestre) if pim_nota_semestre is not None else "Indefinida",
+                    "media_final": media_display,
+                    "faltas": faltas_exibicao,
+                    "observacao": "Média calculada com PIM. Matéria Online (sem controle de faltas obrigatório)."
+                })
+            else: # Outros tipos
+                disciplina_info.update({
+                    "np1": np1_val if np1_val is not None else "Indefinida",
+                    "np2": np2_val if np2_val is not None else "Indefinida",
+                    "media_final": media_val if media_val is not None else "Indefinida",
+                    "faltas": faltas_val if faltas_val is not None else "Indefinidas"
+                })
+                
+            historico.append(disciplina_info)
 
         conn.close()
         return {
             "status": "success",
             "aluno": registros[0]['Nome_Completo'],
             "ra": ra_aluno,
-            "historico": historico
+            "historico": historico,
+            "nota_pim_info": "AVAS: Média Final = (NP1*4 + NP2*4 + PIM*2) / 10."
         }
 
     except sqlite3.Error as e:
@@ -198,7 +557,6 @@ def buscar_material_estudo_api(topico: str) -> dict:
     if not client:
         return {"status": "error", "message": "A API do Gemini não está configurada corretamente."}
 
-    # PROMPT ATUALIZADO para solicitar links e ativar o Google Search.
     prompt = (
         f"Gere um material de estudo conciso e focado para o tópico '{topico}'. "
         "Inclua:\n"
@@ -213,7 +571,6 @@ def buscar_material_estudo_api(topico: str) -> dict:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            # CONFIG CORRETO: Ativa o Google Search como ferramenta do modelo.
             config=GenerateContentConfig(tools=[{"google_search": {}}])
         )
 
@@ -242,43 +599,69 @@ def gerar_material_estudo(topico: str) -> dict:
 # Mapeamento das ferramentas
 TOOLS = {
     'verificar_historico_academico': verificar_historico_academico,
-    'gerar_material_estudo': gerar_material_estudo
+    'gerar_material_estudo': gerar_material_estudo,
+    'lancar_nota_np': lancar_nota_np_api, # Novo! Apenas para Professor
+    'lancar_nota_pim': lancar_nota_pim_api, # Novo! Apenas para Professor
+    'marcar_ed_concluido': marcar_ed_concluido_api, # Novo! Apenas para Professor
+    'lancar_faltas': lancar_faltas_api # Novo! Apenas para Professor
 }
 
-def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
+def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
     """
     Usa o Gemini para interpretar a intenção do usuário (Function Calling),
-    executa a função apropriada (SQL ou Gemini) e gera a resposta final em texto.
-    (Indentação corrigida)
+    executa a função apropriada, com base no tipo de usuário logado (permissão).
     """
 
     if not client:
         return "❌ Desculpe, a conexão com a inteligência artificial está temporariamente indisponível."
 
-    # PROMPT DE ROTEAMENTO: instrui o Gemini a decidir se usa as ferramentas ou responde diretamente.
+    # 1. CONTROLE DE PERMISSÃO: Define quais ferramentas o Gemini pode acessar
+    if tipo_usuario.upper() == 'PROFESSOR':
+        # PROFESSOR: Acesso total (Leitura e Escrita)
+        ferramentas_permitidas = list(TOOLS.values()) 
+        instrucoes_perfil = (
+            "Você é um assistente acadêmico para um **Professor**. Responda com um tom sarcástico, mas sempre respeitoso e informativo, usando a personalidade do 'Joker'. "
+            "Suas principais tarefas são: 1. Ajudar o professor a visualizar dados acadêmicos. 2. Gerar material de estudo. 3. **Lançar notas (NP1, NP2, PIM) e faltas e marcar ED como concluído no sistema.** "
+            "Ao lançar notas, garanta que todos os 4 parâmetros (RA, Disciplina, NP/PIM e Nota) estejam claros e use a função apropriada. Informe a ele que o sistema calcula a média AVAS automaticamente após ter NP1, NP2 e PIM."
+        )
+    else: # Aluno
+        # ALUNO: Acesso restrito (Somente Leitura de Histórico e Geração de Material)
+        ferramentas_permitidas = [
+            TOOLS['verificar_historico_academico'], 
+            TOOLS['gerar_material_estudo']
+        ]
+        instrucoes_perfil = (
+            "Você é um assistente acadêmico para um **Aluno**. Responda com um tom sarcástico, mas sempre informativo, usando a personalidade do 'Joker'. "
+            "Suas principais tarefas são: 1. Ajudar o aluno a verificar o próprio histórico. 2. Gerar material de estudo. **(Você NÃO pode lançar ou alterar notas.)**"
+        )
+        
     prompt_ferramenta = (
-        "O usuário enviou a seguinte mensagem: '{}'. Sua principal função é responder como um assistente acadêmico "
-        "com a personalidade do 'Joker' de Persona 5: inteligente, sarcástico e informativo. \n\n"
+        f"{instrucoes_perfil}\n\n"
+        "O usuário enviou a seguinte mensagem: '{}'. \n\n"
         "**Instruções para Ferramentas:**\n"
         "1. Se o usuário pedir especificamente por um RA, notas ou histórico, use 'verificar_historico_academico'.\n"
-        "2. Se o usuário pedir um **material de estudo/resumo/explicação** sobre um **tópico específico** (ex: 'Me ensine sobre Java', 'O que é Geopolítica?'), use a função 'gerar_material_estudo'.\n"
-        "3. Para **qualquer outra pergunta abrangente** (Ex: 'Como foi seu dia?', 'Me conte uma piada', 'O que é uma linguagem de programação?'), ou se a função for desnecessária/impossível, **RESPONDA DIRETAMENTE com o seu estilo de personalidade**.\n"
+        "2. Se o usuário pedir um material de estudo/resumo/explicação sobre um tópico, use 'gerar_material_estudo'.\n"
+        "3. Se o professor pedir para lançar NP1/NP2, use 'lancar_nota_np'.\n"
+        "4. Se o professor pedir para lançar PIM, use 'lancar_nota_pim'.\n"
+        "5. Se o professor pedir para marcar ED como concluído, use 'marcar_ed_concluido'.\n"
+        "6. Se o professor pedir para lançar faltas, use 'lancar_faltas'.\n"
+        "7. Para **qualquer outra pergunta abrangente** ou se a função for desnecessária/impossível, **RESPONDA DIRETAMENTE**.\n"
         "Em caso de dados faltantes (ex: RA), peça-os. \n\n"
     ).format(mensagem_usuario)
 
-    # 1. Envia a mensagem com as ferramentas para o Gemini
+    # 2. Envia a mensagem com as ferramentas FILTRADAS para o Gemini
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=[prompt_ferramenta],
-            config=GenerateContentConfig(tools=list(TOOLS.values()))
+            config=GenerateContentConfig(tools=ferramentas_permitidas)
         )
     except Exception as e:
         print(f"Erro na chamada do Gemini: {e}")
         return "❌ Erro ao processar a requisição com o Gemini. Tente novamente."
 
 
-    # 2. Verifica se o Gemini decidiu chamar uma função
+    # 3. Verifica se o Gemini decidiu chamar uma função
     if response.function_calls:
         call = response.function_calls[0]
         func_name = call.name
@@ -287,14 +670,14 @@ def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
         if func_name in TOOLS:
             print(f"🤖 Chamando função {func_name} com args: {func_args}")
 
-            # 3. Executa a função localmente
+            # 4. Executa a função localmente
             function_response_data = TOOLS[func_name](**func_args)
 
-            # Se a busca SQL falhar (ex: RA não encontrado), retorna o erro diretamente.
-            if func_name == 'verificar_historico_academico' and function_response_data.get('status') == 'error':
-                return f"Joker: {function_response_data['message']}"
+            # Se a busca/lançamento SQL falhar, retorna o erro diretamente.
+            if function_response_data.get('status') == 'error':
+                return f"Joker: Oops! {function_response_data['message']}"
 
-            # 4. Envia o resultado da execução de volta ao Gemini
+            # 5. Envia o resultado da execução de volta ao Gemini
             segundo_prompt = [
                 response,
                 genai.types.Part.from_function_response(
@@ -303,7 +686,7 @@ def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
                 )
             ]
 
-            # 5. Gera a resposta final formatada para o usuário
+            # 6. Gera a resposta final formatada para o usuário
             final_response = client.models.generate_content(
                 model='gemini-2.5-flash',
                 contents=segundo_prompt
@@ -311,95 +694,96 @@ def rotear_e_executar_mensagem(mensagem_usuario: str) -> str:
 
             return final_response.text
 
-    # 6. Se nenhuma função foi chamada, o Gemini respondeu diretamente
+    # 7. Se nenhuma função foi chamada, o Gemini respondeu diretamente
     return response.text
 
 
-# --- NOVAS ROTAS PARA AUTENTICAÇÃO (CORREÇÃO DE CONEXÃO) ---
+# --- ROTAS DE FLASK (Login e Router) ---
 
 @app.route('/login', methods=['POST'])
 def handle_login():
-    """
-    Simulação de autenticação.
-    Verifica se o RA existe na tabela Alunos para permitir o login.
-    """
+    """Simulação de autenticação."""
     try:
         data = request.get_json()
-        # Garante que 'ra' esteja em maiúsculas (como no banco de dados)
-        ra = data.get('ra', '').strip().upper() 
-        senha = data.get('senha') # Senha não é utilizada, mas é capturada
+        tipo_usuario = data.get('tipo_usuario', '').strip().upper()
+        senha = data.get('senha')
+        credencial = data.get('ra') if tipo_usuario == 'ALUNO' else data.get('funcional')
+        credencial = credencial.strip().upper() if credencial else None
+        codigo_seguranca = data.get('codigo_seguranca', '').strip()
 
-        if not ra:
-            return jsonify({"status": "error", "message": "O campo RA é obrigatório."}), 400
+        if not credencial or not senha:
+            return jsonify({"status": "error", "message": "Credencial e Senha são obrigatórios."}), 400
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Checa se o RA existe e pega o nome.
-        cursor.execute("SELECT Nome_Completo FROM Alunos WHERE RA = ?", (ra,))
-        aluno_info = cursor.fetchone()
+        aluno_info = None
+
+        if tipo_usuario == 'ALUNO':
+            cursor.execute("SELECT Nome_Completo, Tipo_Usuario FROM Alunos WHERE RA = ? AND Tipo_Usuario = 'Aluno'", (credencial,))
+            aluno_info = cursor.fetchone()
+            senha_valida = True 
+
+        elif tipo_usuario == 'PROFESSOR':
+            if not codigo_seguranca or len(codigo_seguranca) != 6:
+                 conn.close()
+                 return jsonify({"status": "error", "message": "Código de Segurança inválido."}), 401
+
+            comando_sql_prof = "SELECT Nome_Completo, Tipo_Usuario, Codigo_Seguranca FROM Alunos WHERE RA = ? AND Tipo_Usuario = 'Professor'"
+            cursor.execute(comando_sql_prof, (credencial,))
+            prof_data = cursor.fetchone()
+            
+            if prof_data:
+                if prof_data['Codigo_Seguranca'] == codigo_seguranca:
+                    aluno_info = prof_data
+                    senha_valida = True
+                else:
+                    senha_valida = False
+            else:
+                aluno_info = None
+                senha_valida = False
+        else:
+             conn.close()
+             return jsonify({"status": "error", "message": "Tipo de usuário inválido."}), 400
+
         conn.close()
 
-        if aluno_info:
-            # Login bem-sucedido (simulação)
+        if aluno_info and senha_valida:
             return jsonify({
                 "status": "success", 
                 "message": "Login bem-sucedido.", 
-                "user": {"ra": ra, "nome": aluno_info['Nome_Completo']}
+                "user": {
+                    "ra": credencial, 
+                    "nome": aluno_info['Nome_Completo'],
+                    "tipo_usuario": aluno_info['Tipo_Usuario'].lower() 
+                }
             }), 200
         else:
-            # RA não encontrado, falha na autenticação
-            return jsonify({"status": "error", "message": "RA ou Senha inválidos."}), 401
+            return jsonify({"status": "error", "message": "Credenciais inválidas."}), 401
 
     except Exception as e:
         print(f"❌ Erro na rota /login: {e}")
         return jsonify({"status": "error", "message": "Erro interno do servidor."}), 500
 
-@app.route('/get_aluno_info', methods=['POST'])
-def get_aluno_info_route():
-    """Rota auxiliar para o front-end buscar o nome do aluno (não crítica)."""
-    try:
-        data = request.get_json()
-        ra = data.get('ra', '').strip().upper()
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT Nome_Completo FROM Alunos WHERE RA = ?", (ra,))
-        aluno = cursor.fetchone()
-        conn.close()
-
-        if aluno:
-            return jsonify({"nome": aluno['Nome_Completo']}), 200
-        else:
-            return jsonify({"status": "error", "message": "RA não encontrado"}), 404
-
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-# --- ROTA PARA SERVIR O FRONT-END ---
 @app.route('/')
 def serve_index():
-    """Serva o arquivo index.html principal, que está na raiz."""
-    # ⬅️ Faz o Flask enviar o arquivo joker_bot.html da pasta raiz
+    """Serva o arquivo joker_bot.html principal, que está na raiz."""
     return send_file('joker_bot.html')
 
-# --- 5. ROTA PRINCIPAL PARA O FRONT-END WEB ---
 @app.route('/web_router', methods=['POST'])
 def handle_web_message():
-    """
-    Endpoint que recebe a mensagem do usuário do Front-end Web (index.html).
-    """
+    """Endpoint que recebe a mensagem do usuário do Front-end Web."""
     try:
         data = request.get_json()
         message_text = data.get('message')
+        tipo_usuario = data.get('tipo_usuario', 'aluno') 
 
         if not message_text:
             return jsonify({"status": "error", "message": "Mensagem de texto não fornecida."}), 400
 
-        print(f"🌐 Mensagem recebida do Web UI: {message_text}")
+        print(f"🌐 Mensagem recebida de {tipo_usuario.upper()}: {message_text}")
 
-        resposta_final_texto = rotear_e_executar_mensagem(message_text)
+        resposta_final_texto = rotear_e_executar_mensagem(message_text, tipo_usuario)
 
         return jsonify({
             "status": "success",
@@ -411,20 +795,19 @@ def handle_web_message():
         return jsonify({"status": "error", "message": f"Erro interno do servidor: {e}"}), 500
 
 
-# --- ROTA PARA TWILIO (WhatsApp) ---
-
 @app.route('/whatsapp_webhook', methods=['POST'])
 def handle_whatsapp_message():
     """Endpoint que recebe a mensagem do usuário do WhatsApp via Webhook da Twilio."""
 
     message_text = request.form.get('Body')
+    TIPO_USUARIO_WHATSAPP = 'aluno' 
 
     if not message_text:
         return str(MessagingResponse()), 200
 
     print(f"💬 Mensagem recebida da Twilio: {message_text}")
 
-    resposta_final_texto = rotear_e_executar_mensagem(message_text)
+    resposta_final_texto = rotear_e_executar_mensagem(message_text, TIPO_USUARIO_WHATSAPP)
 
     resp = MessagingResponse()
     resp.message(resposta_final_texto)
@@ -432,10 +815,7 @@ def handle_whatsapp_message():
 
 
 # --- EXECUÇÃO PRINCIPAL ---
-
-# Inicializa o banco de dados antes de iniciar o servidor (Correção para o Render)
 init_db()
 
 if __name__ == '__main__':
-    # Certifique-se de que o Flask rode na porta 5000, conforme configurado no front-end.
     app.run(debug=True)
