@@ -439,7 +439,7 @@ def lancar_faltas_api(ra_aluno: str, nome_disciplina: str, faltas: int) -> dict:
 
 # --- OPERAÇÃO DE LEITURA (Consulta) ---
 
-def verificar_historico_academico(ra_aluno: str) -> dict:
+def verificar_dados_curso_api(ra_aluno: str) -> dict:
     """OPERAÇÃO 1: Busca o histórico ajustado para as regras de PIM/ED/AVAS."""
     ra_aluno = ra_aluno.strip().upper()
 
@@ -632,7 +632,7 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
         f"{instrucoes_perfil}\n\n"
         "O usuário enviou a seguinte mensagem: '{}'. \n\n"
         "**Instruções para Ferramentas:**\n"
-        "1. Se o usuário pedir especificamente por um RA, notas ou histórico, use 'verificar_historico_academico'.\n"
+        "1. Se o usuário pedir especificamente por um RA, notas ou histórico, use 'verificar_dados_curso_api'.\n"
         "2. Se o usuário pedir um material de estudo/resumo/explicação sobre um tópico, use 'gerar_material_estudo'.\n"
         "3. Se o professor pedir para lançar NP1/NP2, use 'lancar_nota_np'.\n"
         "4. Se o professor pedir para lançar PIM, use 'lancar_nota_pim'.\n"
@@ -833,5 +833,6 @@ init_db()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
