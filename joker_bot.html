@@ -229,9 +229,10 @@
     </div>
 
     <script>
-        // ⚠️ IMPORTANTE: Use 'http://127.0.0.1:5000' para teste local.
-        const API_BASE_URL = 'https://joker-bot-academico.onrender.com'; 
-        
+    // ⚠️ IMPORTANTE: Use 'http://127.0.0.1:5000' para teste local.
+    const API_BASE_URL = 'https://joker-bot-academico.onrender.com'; 
+    
+    // --- Referências DOM ---
     const chatDisplay = document.getElementById('chat-display');
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
@@ -239,10 +240,16 @@
     const loginForm = document.getElementById('login-form');
     const loginStatus = document.getElementById('login-status');
     const headerTitle = document.getElementById('header-title');
-    
     const userTypeSelect = document.getElementById('user-type');
     const alunoFields = document.getElementById('aluno-fields');
     const professorFields = document.getElementById('professor-fields');
+    
+    // Referências explícitas aos campos de input
+    const raInput = document.getElementById('ra');
+    const senhaAlunoInput = document.getElementById('senha-aluno');
+    const funcionalInput = document.getElementById('funcional');
+    const codigoSegurancaInput = document.getElementById('codigo-seguranca');
+    const senhaProfessorInput = document.getElementById('senha-professor');
     
     // --- VARIÁVEIS DE ESTADO (IMPORTANTE) ---
     let loggedUser = {
@@ -264,17 +271,18 @@
     });
 
     loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+        // ESSENCIAL: Evita que o formulário recarregue a página
+        e.preventDefault(); 
+        
         loginStatus.textContent = 'Autenticando...';
         
         const userType = userTypeSelect.value;
         let payload = { tipo_usuario: userType };
 
         if (userType === 'aluno') {
-            payload.ra = document.getElementById('ra').value.trim().toUpperCase();
-            payload.senha = document.getElementById('senha-aluno').value.trim();
+            payload.ra = raInput.value.trim().toUpperCase();
+            payload.senha = senhaAlunoInput.value.trim();
             
-            // Validação explícita para Aluno
             if (!payload.ra || !payload.senha) {
                 loginStatus.textContent = "Aluno: RA e Senha são obrigatórios.";
                 return; 
@@ -282,11 +290,10 @@
 
         } else {
             // Professor: 3 campos obrigatórios
-            payload.funcional = document.getElementById('funcional').value.trim().toUpperCase();
-            payload.codigo_seguranca = document.getElementById('codigo-seguranca').value.trim();
-            payload.senha = document.getElementById('senha-professor').value.trim();
+            payload.funcional = funcionalInput.value.trim().toUpperCase();
+            payload.codigo_seguranca = codigoSegurancaInput.value.trim();
+            payload.senha = senhaProfessorInput.value.trim();
             
-            // Validação explícita para Professor
             if (!payload.funcional || !payload.codigo_seguranca || !payload.senha) {
                 loginStatus.textContent = "Professor: Funcional, Código e Senha são obrigatórios.";
                 return; 
@@ -298,6 +305,7 @@
             }
         }
         
+        // --- CHAMA O ENDPOINT /login DO PYTHON ---
         try {
             const response = await fetch(`${API_BASE_URL}/login`, {
                 method: 'POST',
@@ -308,21 +316,18 @@
             const data = await response.json();
 
             if (response.status === 200 && data.status === 'success') {
-                // Armazena as informações do usuário
                 loggedUser = data.user;
                 
-                // Altera a interface para o CHAT
+                // Transição para o CHAT
                 loginScreen.style.display = 'none';
                 chatDisplay.style.display = 'flex';
                 document.querySelector('.chat-input').style.display = 'flex';
                 
-                // Mensagem de boas-vindas personalizada
                 const welcomeMsg = loggedUser.tipo_usuario === 'professor' 
                     ? `Professor ${loggedUser.nome}, seja bem-vindo(a). Suas permissões de **LANÇAMENTO E CONSULTA** estão ativas. O que faremos hoje?`
                     : `Bem-vindo(a) ${loggedUser.nome}. Diga seu **RA** para ver seu Histórico ou o **Tópico** para gerar Material de Estudo.`;
                 
                 appendMessage('bot', welcomeMsg);
-                
                 headerTitle.textContent = `${loggedUser.nome} - ${loggedUser.tipo_usuario.toUpperCase()}`;
 
             } else {
@@ -331,7 +336,6 @@
 
         } catch (error) {
             console.error('Erro de rede ao logar:', error);
-            // Esta mensagem é crucial, se o back-end estiver inativo, ela deve aparecer.
             loginStatus.textContent = "Falha na conexão com o servidor. Verifique a URL e o Back-end.";
         }
     });
@@ -343,7 +347,6 @@
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('message', sender);
 
-        // Formatação: substitui quebras de linha e negrito
         const formattedText = text
             .replace(/\n/g, '<br>')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -380,12 +383,11 @@
     // --- FUNÇÃO DE LÓGICA CORE (Chama a Rota Unificada do Python) ---
 
     async function processUserMessage(message) {
-        // Usa as informações do usuário logado no payload
+        // Envia o tipo_usuario logado para o Python controlar as permissões
         const payload = { 
             message: message, 
             tipo_usuario: loggedUser.tipo_usuario
         };
-
 
         showLoading();
         
@@ -413,7 +415,7 @@
     }
 
 
-    // --- EVENT LISTENERS E INÍCIO ---
+    // --- EVENT LISTENERS E CHAT ---
 
     async function handleSend() {
         const message = userInput.value.trim();
@@ -436,6 +438,7 @@
     </script>
 </body>
 </html>
+
 
 
 
