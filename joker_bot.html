@@ -18,29 +18,28 @@
             --p5-font-bold: 'Anton', sans-serif;
         }
 
-        /* --- Estilo Global e Fundo (Corrigido para evitar conflito de layout) --- */
-        body, html {
-            min-height: 100vh;
-            margin: 0;
+        body {
             font-family: var(--p5-font);
             color: var(--p5-white);
-            background-color: var(--p5-black);
-            
             display: flex;
             justify-content: center;
             align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden; 
             
-            /* Fundo da Imagem da Cidade P&B */
-            background-image: url('static/background.jpg'); 
+            /* Fundo com a imagem da cidade (image_7c385a.jpg) */
+            background-color: var(--p5-black); 
+            background-image: url('background.jpg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
         }
 
-        /* Overlay escuro */
+        /* Overlay escuro para dar destaque ao chat */
         body::before {
             content: '';
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
@@ -49,167 +48,43 @@
             z-index: 5;
         }
 
-        /* 🟢 CONTAINER PRINCIPAL (Moldura do Chat) - CORREÇÃO CRÍTICA */
-        #main-app-container {
+        /* Contêiner Principal do Chat (A tela do celular/SNS) */
+        .chat-container {
             width: 90%;
             max-width: 400px;
-            min-width: 320px; /* Garante que não colapse no mobile */
-            height: 95vh; 
-            max-height: 800px;
-            
+            height: 95%;
             background-color: var(--p5-red); 
-            border: 5px solid var(--p5-white);
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
-            
-            position: relative; 
             z-index: 10;
-            
-            /* Flexbox para gerenciar as telas internas */
-            display: flex; 
+            display: flex;
             flex-direction: column;
-            overflow: hidden; 
-            
-            /* IMPEDE que o Flexbox pai (BODY) o esmague! */
-            flex-shrink: 0; 
-        }
-        
-        /* --- TELAS INTERNAS (Login e Chat) --- */
-        .app-screen {
-            position: absolute; 
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            box-sizing: border-box;
-            background-color: var(--p5-red); /* Cor de fundo padrão da P5 */
-            display: none;
-            flex-direction: column; 
-        }
-
-        /* --- TELA DE LOGIN --- */
-        #login-screen {
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            text-align: center;
-            z-index: 20; 
-        }
-        
-        /* Fundo do Joker (joker_background.jpg) APENAS no login */
-        #login-screen::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: url('static/joker_background.jpg'); 
-            background-size: contain; 
-            background-position: center;
-            background-repeat: no-repeat;
-            opacity: 0.3; 
-            z-index: -1;
-        }
-        
-        #login-screen h1 {
-            color: var(--p5-white);
-            font-family: var(--p5-font-bold);
-            font-size: 2.2em;
-            letter-spacing: 2px;
-            text-shadow: 2px 2px 0 var(--p5-black);
-            margin-bottom: 5px;
-            line-height: 1;
-        }
-        
-        #login-screen p {
-            font-family: var(--p5-font);
-            width: 90%;
-            max-width: 250px;
-            margin-bottom: 20px;
-        }
-        
-        #login-form {
             position: relative;
-            z-index: 2;
-            width: 90%;
-            max-width: 250px;
-        }
-
-        #login-form input {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 3px solid var(--p5-white);
-            background-color: var(--p5-black); 
-            color: var(--p5-white);
-            font-family: var(--p5-font);
-            font-size: 1.1em;
-            box-sizing: border-box;
-            outline: none;
+            border: 5px solid var(--p5-white);
         }
         
-        #login-form button {
-            background-color: var(--p5-white);
-            color: var(--p5-red);
-            border: none;
-            padding: 12px;
-            width: 100%;
-            cursor: pointer;
-            font-size: 1.2em;
-            font-family: var(--p5-font-bold);
-            letter-spacing: 2px;
-            transition: background-color 0.1s;
-        }
-        
-        #login-form button:hover { background-color: #f0f0f0; }
-        #login-error { color: yellow; margin-top: 15px; font-weight: bold; display: none; }
-
-        /* --- TELA DO CHAT --- */
-        #chat-screen {
-            z-index: 5;
-            background-color: var(--p5-red); 
-        }
-
-        /* 🟢 Estilos Reutilizados do seu CSS P5 */
+        /* Cabeçalho Superior */
         .chat-header {
             background-color: var(--p5-black);
             color: var(--p5-white);
             padding: 15px 10px;
+            text-align: left;
             border-bottom: 5px solid var(--p5-white);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            min-height: 50px;
+            position: relative;
         }
 
-        .chat-header span {
-            /* Texto do header (Joker Bot - Bem-vindo...) */
-            flex-grow: 1;
+        .chat-header h1 {
+            margin: 0;
             font-family: var(--p5-font-bold);
-            font-size: 1.1em;
-            letter-spacing: 1px;
+            font-size: 1.8em;
+            letter-spacing: 2px;
             text-shadow: 1px 1px 0 var(--p5-red);
+            /* Sem o 'M' grande, o padding é menor */
             padding-left: 10px; 
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
         
-        #logout-button {
-            background-color: var(--p5-red);
-            border: 3px solid var(--p5-white);
-            color: var(--p5-white);
-            padding: 5px 10px;
-            cursor: pointer;
-            font-size: 0.8em;
-            font-family: var(--p5-font-bold);
-            white-space: nowrap;
-            flex-shrink: 0; 
-            clip-path: polygon(0 0, 100% 0, 100% 80%, 75% 100%, 0 100%);
-        }
+        /* O seletor ::before que continha o 'M' foi removido aqui. */
 
         /* Área de Mensagens (Vermelho P5) */
-        #chat-box {
+        .chat-display {
             flex-grow: 1;
             background-color: var(--p5-red); 
             padding: 10px;
@@ -218,26 +93,23 @@
         }
         
         /* Estilos dos Balões de Mensagem */
+
         .message {
             margin-bottom: 15px;
             display: flex;
             align-items: flex-start;
         }
 
-        /* Ícone do Bot (Joker) - CORRIGIDO */
+        /* Ícone do Bot (Joker) - TAMANHO AUMENTADO */
         .bot-icon {
-            width: 50px; 
-            height: 50px;
+            width: 60px; 
+            height: 60px;
             background-color: var(--p5-black);
             border: 2px solid var(--p5-white);
             margin-right: 10px;
             flex-shrink: 0;
-            
-            /* 🟢 CORREÇÃO: Verifica se a URL da imagem está correta */
-            background-image: url('static/joker_icon.png'); 
+            background-image: url('joker_icon.png'); 
             background-size: cover;
-            background-position: center;
-            
             filter: grayscale(100%); 
             clip-path: polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%); 
         }
@@ -247,15 +119,11 @@
             background-color: var(--p5-black);
             color: var(--p5-white);
             padding: 8px 15px;
-            max-width: 75%; 
+            max-width: 70%; 
             font-size: 1em;
-            font-family: var(--p5-font);
             clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
+            position: relative;
             white-space: pre-wrap;
-        }
-        
-        .loading .bot-text {
-            font-style: italic;
         }
 
         /* Balão do Usuário (Navegando na direita) */
@@ -267,20 +135,20 @@
             background-color: var(--p5-white);
             color: var(--p5-black);
             padding: 8px 15px;
-            max-width: 80%;
+            max-width: 75%;
             font-size: 1em;
-            font-family: var(--p5-font);
             clip-path: polygon(0 20%, 10% 0, 100% 0, 100% 100%, 0 100%);
         }
 
         /* Área de Input */
-        #input-container {
+        .chat-input {
             padding: 10px;
             background-color: var(--p5-red); 
+            border-top: 5px solid var(--p5-white);
             display: flex;
         }
 
-        #user-input {
+        .chat-input input[type="text"] {
             flex-grow: 1;
             padding: 10px;
             border: 3px solid var(--p5-black);
@@ -289,24 +157,22 @@
             color: var(--p5-black);
             font-family: var(--p5-font);
             outline: none;
-            resize: none; /* Mantém o ajuste de altura via JS */
-            margin-right: 5px;
         }
 
-        #send-button {
+        .chat-input button {
             background-color: var(--p5-black);
             color: var(--p5-white);
             border: 3px solid var(--p5-white);
             padding: 10px 15px;
+            margin-left: 5px;
             font-family: var(--p5-font-bold);
             font-size: 1em;
             cursor: pointer;
             clip-path: polygon(0 0, 100% 0, 100% 80%, 75% 100%, 0 100%);
             transition: background-color 0.1s;
-            flex-shrink: 0;
         }
 
-        #send-button:hover {
+        .chat-input button:hover {
             background-color: var(--p5-red);
             color: var(--p5-white);
         }
@@ -314,123 +180,35 @@
 </head>
 <body>
 
-    <div id="main-app-container">
-
-        <div id="login-screen" class="app-screen" style="display: flex;">
-            <h1>Phantom Thieves Chat</h1>
-            <p>Entre com suas credenciais acadêmicas (RA e Senha).</p>
-            <form id="login-form">
-                <input type="text" id="ra-input" placeholder="Seu RA" required>
-                <input type="password" id="password-input" placeholder="Sua Senha" required>
-                <button type="submit">LOGIN</button>
-                <div id="login-error" style="display: none;">RA ou Senha inválidos.</div>
-            </form>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>JOKER - SISTEMA ACADÊMICO</h1>
         </div>
 
-        <div id="chat-screen" class="app-screen" style="display: none;">
-            <div class="chat-header">
-                <span>JOKER - SISTEMA ACADÊMICO | <span id="user-display-name"></span></span>
-                <button id="logout-button">SAIR</button>
-            </div>
-            
-            <div id="chat-box">
+        <div class="chat-display" id="chat-display">
             </div>
 
-            <div id="input-container">
-                <textarea id="user-input" placeholder="Enter message..." rows="1"></textarea>
-                <button id="send-button">SEND</button>
-            </div>
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="Enter message..." autofocus>
+            <button id="send-button">SEND</button>
         </div>
-
     </div>
 
     <script>
         // ⚠️ IMPORTANTE: Use 'http://127.0.0.1:5000' para teste local.
-        const API_BASE_URL = 'https://joker-bot-academico.onrender.com'; 
+        const API_BASE_URL = 'http://127.0.0.1:5000'; 
         
-        let isLoggedIn = false;
-        let userData = {}; 
-
-        const loginScreen = document.getElementById('login-screen');
-        const chatScreen = document.getElementById('chat-screen');
-        const loginForm = document.getElementById('login-form');
-        const loginError = document.getElementById('login-error');
-        const chatBox = document.getElementById('chat-box');
+        const chatDisplay = document.getElementById('chat-display');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
-        const userDisplayName = document.getElementById('user-display-name');
-        const logoutButton = document.getElementById('logout-button');
 
-        // --- FUNÇÕES DE CONTROLE DE TELA ---
+        // --- FUNÇÕES DE INTERFACE ---
 
-        function setLoggedIn(data) {
-            isLoggedIn = true;
-            userData = data;
-            userDisplayName.textContent = data.nome;
-            loginScreen.style.display = 'none';
-            chatScreen.style.display = 'flex'; 
-        }
-
-        function setLoggedOut() {
-            isLoggedIn = false;
-            userData = {};
-            localStorage.removeItem('user_data');
-            
-            chatBox.innerHTML = '';
-            
-            chatScreen.style.display = 'none';
-            loginScreen.style.display = 'flex';
-        }
-        
-        // --- FUNÇÕES DE LOGIN ---
-
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const ra = document.getElementById('ra-input').value;
-            const senha = document.getElementById('password-input').value;
-
-            loginError.style.display = 'none';
-            loginError.textContent = 'RA ou Senha inválidos.'; 
-
-            try {
-                // Chama a rota /login no app.py
-                const response = await fetch(`${API_BASE_URL}/login`, { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ra, senha }) 
-                });
-
-                const data = await response.json();
-
-                if (response.ok) { 
-                    const userData = data.user;
-                    localStorage.setItem('user_data', JSON.stringify(userData)); 
-                    setLoggedIn(userData);
-                    appendMessage('bot', `Bem-vindo, **${userData.nome}**.\nDiga seu **RA** para ver o Histórico ou o **Tópico** para gerar Material de Estudo.`);
-                    
-                } else {
-                    loginError.textContent = data.message || 'RA ou Senha inválidos.';
-                    loginError.style.display = 'block';
-                }
-
-            } catch (error) {
-                console.error('Erro ao conectar com o servidor:', error);
-                loginError.textContent = 'Erro de conexão com o servidor. Tente novamente.';
-                loginError.style.display = 'block';
-            }
-        });
-
-        logoutButton.addEventListener('click', setLoggedOut);
-
-
-        // --- FUNÇÕES DO CHAT ---
-        
         function appendMessage(sender, text) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', sender);
 
-            // Formatação: substitui quebras de linha e negrito (P5 Style)
+            // Formatação: substitui quebras de linha e negrito
             const formattedText = text
                 .replace(/\n/g, '<br>')
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -441,12 +219,11 @@
                     <div class="bot-text">${formattedText}</div>
                 `;
             } else {
-                // Usuário não precisa de formatação HTML no texto
-                messageDiv.innerHTML = `<div class="user-text">${text}</div>`; 
+                messageDiv.innerHTML = `<div class="user-text">${text}</div>`;
             }
             
-            chatBox.appendChild(messageDiv);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            chatDisplay.appendChild(messageDiv);
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
         }
 
         function showLoading() {
@@ -454,10 +231,8 @@
             loadingMessage.classList.add('message', 'bot', 'loading');
             loadingMessage.innerHTML = `<div class="bot-icon"></div><div class="bot-text">Aguarde... Analisando a Meta Cognitiva.</div>`;
             loadingMessage.id = 'loading-indicator';
-            chatBox.appendChild(loadingMessage);
-            chatBox.scrollTop = chatBox.scrollHeight;
-            userInput.disabled = true;
-            sendButton.disabled = true;
+            chatDisplay.appendChild(loadingMessage);
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
         }
 
         function hideLoading() {
@@ -465,32 +240,35 @@
             if (loadingIndicator) {
                 loadingIndicator.remove();
             }
-            userInput.disabled = false;
-            sendButton.disabled = false;
         }
+
+        // --- FUNÇÃO DE LÓGICA CORE (Chama a Rota Unificada do Python) ---
 
         async function processUserMessage(message) {
             const endpoint = 'web_router';
-            const payload = { message: message };
+            // OBSERVAÇÃO: A rota /web_router precisa saber o tipo de usuário para aplicar permissões.
+            // Aqui estamos simulando que é sempre 'aluno' por padrão para este Front-end.
+            // Para testar o Professor, você teria que modificar este payload para:
+            // const payload = { message: message, tipo_usuario: 'professor' };
+            const payload = { message: message, tipo_usuario: 'aluno' };
+
 
             showLoading();
             
             try {
                 const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
                 
+                // O Python (Gemini) já retorna o texto final formatado
                 if (response.status === 200 && data.status === 'success') {
                     return data.message;
-                } else if (response.status === 401) {
-                    // Se o roteador retornar 401 (não autorizado), força o logout
-                    setLoggedOut();
-                    alert('Sua sessão expirou. Por favor, faça login novamente.');
-                    return null;
                 } else {
                     return `Joker: Ops! ${data.message || 'Ocorreu um erro desconhecido no servidor.'}`;
                 }
@@ -504,49 +282,30 @@
         }
 
 
+        // --- EVENT LISTENERS E INÍCIO ---
+
         async function handleSend() {
             const message = userInput.value.trim();
-            if (message === '' || !isLoggedIn) return;
+            if (message === '') return;
 
             appendMessage('user', message);
             userInput.value = '';
-            userInput.style.height = 'auto'; // Reseta a altura do textarea
 
             const botResponse = await processUserMessage(message);
-            if (botResponse) {
-                appendMessage('bot', botResponse);
-            }
+            appendMessage('bot', botResponse);
         }
-        
-        // Ajusta altura do textarea
-        userInput.addEventListener('input', () => {
-            userInput.style.height = 'auto';
-            userInput.style.height = (userInput.scrollHeight) + 'px';
-        });
 
-        // Eventos
         sendButton.addEventListener('click', handleSend);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
                 handleSend();
             }
         });
 
-        // --- LÓGICA DE AUTO-LOGIN E INÍCIO ---
-        (function checkAutoLogin() {
-            const storedData = localStorage.getItem('user_data');
-            if (storedData) {
-                const data = JSON.parse(storedData);
-                setLoggedIn(data);
-                // Mensagem inicial após o auto-login
-                appendMessage('bot', `Bem-vindo de volta, **${data.nome}**.\nDiga seu **RA** para ver o Histórico ou o **Tópico** para gerar Material de Estudo.`);
-            } else {
-                loginError.style.display = 'none'; 
-            }
-        })();
+        // Mensagem de boas-vindas ao carregar a página
+        window.onload = () => {
+            appendMessage('bot', "Bem-vindo, Diga seu **RA** para ver o Histórico ou o **Tópico** para gerar Material de Estudo.");
+        };
     </script>
 </body>
 </html>
-
-
