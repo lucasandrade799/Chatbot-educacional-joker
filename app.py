@@ -12,7 +12,7 @@ from flask_cors import CORS
 API_KEY_GEMINI = os.environ.get('GEMINI_API_KEY')
 DATABASE_NAME = 'BDchatbot.db'
 
-# --- 1. SCRIPT SQL COMPLETO (FINAL: Faltas NULL para todos) ---
+# --- 1. SCRIPT SQL COMPLETO (COM CAMPO DE SENHA) ---
 SQL_SCRIPT_CONTENT = """
 -- CRIAÇÃO DAS TABELAS
 CREATE TABLE IF NOT EXISTS Alunos (
@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS Alunos (
     RA VARCHAR(10) NOT NULL UNIQUE,
     Nome_Completo VARCHAR(100) NOT NULL,
     Tipo_Usuario VARCHAR(10) NOT NULL DEFAULT 'Aluno',
-    Codigo_Seguranca VARCHAR(6) NULL
+    Codigo_Seguranca VARCHAR(6) NULL,
+    Senha VARCHAR(100) NOT NULL -- NOVO CAMPO DE SENHA
 );
 
 CREATE TABLE IF NOT EXISTS Disciplinas (
@@ -35,10 +36,10 @@ CREATE TABLE IF NOT EXISTS Historico_Academico (
     id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
     fk_id_aluno INT NOT NULL,
     fk_id_disciplina INT NOT NULL,
-    NP1 DECIMAL(4, 2) NULL, -- Nota da 1ª Prova (NULL para PIM/ED)
-    NP2 DECIMAL(4, 2) NULL, -- Nota da 2ª Prova (NULL para PIM/ED)
-    Media_Final DECIMAL(4, 2) NULL, -- Média ou Nota PIM/Status de ED
-    Faltas INT NULL, -- Faltas 
+    NP1 DECIMAL(4, 2) NULL, 
+    NP2 DECIMAL(4, 2) NULL, 
+    Media_Final DECIMAL(4, 2) NULL, 
+    Faltas INT NULL, 
     FOREIGN KEY (fk_id_aluno) REFERENCES Alunos(id_aluno),
     FOREIGN KEY (fk_id_disciplina) REFERENCES Disciplinas(id_disciplina),
     UNIQUE (fk_id_aluno, fk_id_disciplina)
@@ -68,17 +69,18 @@ INSERT OR IGNORE INTO Disciplinas (Nome_Disciplina, Semestre, Tipo_Avaliacao) VA
 ('Tópicos Avançados', 2, 'ED'),
 ('PIM II', 2, 'PIM');
 
--- POPULANDO A TABELA ALUNOS
-INSERT OR IGNORE INTO Alunos (RA, Nome_Completo, Tipo_Usuario, Codigo_Seguranca) VALUES
-('R3487E5', 'Matheus de Assis Alves', 'Aluno', NULL), 
-('R6738H5', 'Matheus Balzi da Silva', 'Aluno', NULL), 
-('R818888', 'Lucas Gabriel da Silva Gardezan', 'Aluno', NULL),
-('H755247', 'Matheus Henrique Castro de Oliveira', 'Aluno', NULL), 
-('R848140', 'Thainanda Alves Monteiro', 'Aluno', NULL), 
-('820793', 'Lucas da Silva Andrade', 'Aluno', NULL),
-('P12345', 'Prof. Sae Niijima', 'Professor', '010101'); 
+-- POPULANDO A TABELA ALUNOS (Senhas e Códigos de Segurança inclusos)
+INSERT OR IGNORE INTO Alunos (RA, Nome_Completo, Tipo_Usuario, Codigo_Seguranca, Senha) VALUES
+('R3487E5', 'Matheus de Assis Alves', 'Aluno', NULL, '123456'), 
+('R6738H5', 'Matheus Balzi da Silva', 'Aluno', NULL, '123456'), 
+('R818888', 'Lucas Gabriel da Silva Gardezan', 'Aluno', NULL, '123456'),
+('H755247', 'Matheus Henrique Castro de Oliveira', 'Aluno', NULL, '123456'), 
+('R848140', 'Thainanda Alves Monteiro', 'Aluno', NULL, '123456'), 
+('820793', 'Lucas da Silva Andrade', 'Aluno', NULL, '123456'),
+-- Professor com Código de Segurança e Senha do Professor
+('P12345', 'Prof. Eliana', 'Professor', '010101', 'professorsenha'); 
 
--- REGISTRO DO HISTÓRICO ACADÊMICO (Todos os campos de notas e faltas são NULL/Indefinidos)
+-- REGISTRO DO HISTÓRICO ACADÊMICO (sem alteração)
 INSERT OR IGNORE INTO Historico_Academico (fk_id_aluno, fk_id_disciplina, NP1, NP2, Media_Final, Faltas)
 SELECT 
     A.id_aluno, 
@@ -106,7 +108,7 @@ else:
     print("⚠️ Chave API do Gemini ausente. A Op. 2 e o roteador não funcionarão.")
 
 
-# --- 2. FUNÇÕES DE SUPORTE AO BANCO DE DADOS ---
+# --- 2. FUNÇÕES DE SUPORTE AO BANCO DE DADOS E CÁLCULOS ---
 
 def init_db():
     """Cria e popula o banco de dados. Chamado apenas no início do servidor."""
@@ -492,7 +494,7 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
                     "nota_pim": media_val if media_val is not None else "Indefinida",
                     "np1": "N/A",
                     "np2": "N/A",
-                    "media_final": "N/A", # Não tem média final própria
+                    "media_final": "N/A", 
                     "faltas": "N/A",
                     "observacao": "Nota de trabalho que compõe a média de todas as matérias AVAS do semestre."
                 })
@@ -587,23 +589,14 @@ def buscar_material_estudo_api(topico: str) -> dict:
 
 # --- 4. CONFIGURAÇÃO DE FUNÇÕES (TOOLS) E ROUTER DE CONTEÚDO ---
 
-# Funções que o Gemini pode chamar
-def verificar_historico_academico(ra: str) -> dict:
-    """Busca o histórico acadêmico completo de um aluno pelo seu RA."""
-    return verificar_dados_curso_api(ra)
-
-def gerar_material_estudo(topico: str) -> dict:
-    """Gera material de estudo conciso e focado sobre um tópico específico."""
-    return buscar_material_estudo_api(topico)
-
 # Mapeamento das ferramentas
 TOOLS = {
-    'verificar_historico_academico': verificar_historico_academico,
-    'gerar_material_estudo': gerar_material_estudo,
-    'lancar_nota_np': lancar_nota_np_api, # Novo! Apenas para Professor
-    'lancar_nota_pim': lancar_nota_pim_api, # Novo! Apenas para Professor
-    'marcar_ed_concluido': marcar_ed_concluido_api, # Novo! Apenas para Professor
-    'lancar_faltas': lancar_faltas_api # Novo! Apenas para Professor
+    'verificar_historico_academico': verificar_dados_curso_api,
+    'gerar_material_estudo': buscar_material_estudo_api,
+    'lancar_nota_np': lancar_nota_np_api, 
+    'lancar_nota_pim': lancar_nota_pim_api, 
+    'marcar_ed_concluido': marcar_ed_concluido_api, 
+    'lancar_faltas': lancar_faltas_api 
 }
 
 def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
@@ -702,13 +695,22 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
 
 @app.route('/login', methods=['POST'])
 def handle_login():
-    """Simulação de autenticação."""
+    """
+    Simulação de autenticação com senhas fixas (Aluno: 123456)
+    e três campos obrigatórios para Professor.
+    """
     try:
         data = request.get_json()
         tipo_usuario = data.get('tipo_usuario', '').strip().upper()
-        senha = data.get('senha')
+        
+        # A senha é o campo 'senha' para ambos
+        senha = data.get('senha') 
+        
+        # Credencial Principal
         credencial = data.get('ra') if tipo_usuario == 'ALUNO' else data.get('funcional')
         credencial = credencial.strip().upper() if credencial else None
+        
+        # Campo exclusivo do Professor
         codigo_seguranca = data.get('codigo_seguranca', '').strip()
 
         if not credencial or not senha:
@@ -717,30 +719,40 @@ def handle_login():
         conn = get_db_connection()
         cursor = conn.cursor()
         aluno_info = None
+        senha_valida = False # Define como falso por padrão
 
         if tipo_usuario == 'ALUNO':
-            cursor.execute("SELECT Nome_Completo, Tipo_Usuario FROM Alunos WHERE RA = ? AND Tipo_Usuario = 'Aluno'", (credencial,))
+            # 1. Lógica para Aluno: verifica RA, Tipo e Senha
+            comando_sql_aluno = "SELECT Nome_Completo, Tipo_Usuario, Senha FROM Alunos WHERE RA = ? AND Tipo_Usuario = 'Aluno'"
+            cursor.execute(comando_sql_aluno, (credencial,))
             aluno_info = cursor.fetchone()
-            senha_valida = True 
-
+            
+            # Verifica se encontrou o aluno E se a senha confere
+            if aluno_info and aluno_info['Senha'] == senha:
+                senha_valida = True
+            
         elif tipo_usuario == 'PROFESSOR':
+            # 2. Lógica para Professor: verifica 3 campos
             if not codigo_seguranca or len(codigo_seguranca) != 6:
                  conn.close()
-                 return jsonify({"status": "error", "message": "Código de Segurança inválido."}), 401
+                 return jsonify({"status": "error", "message": "Código de Segurança inválido. Deve ter 6 dígitos."}), 401
 
-            comando_sql_prof = "SELECT Nome_Completo, Tipo_Usuario, Codigo_Seguranca FROM Alunos WHERE RA = ? AND Tipo_Usuario = 'Professor'"
+            comando_sql_prof = """
+            SELECT Nome_Completo, Tipo_Usuario, Codigo_Seguranca, Senha 
+            FROM Alunos 
+            WHERE RA = ? AND Tipo_Usuario = 'Professor'
+            """
             cursor.execute(comando_sql_prof, (credencial,))
             prof_data = cursor.fetchone()
             
             if prof_data:
-                if prof_data['Codigo_Seguranca'] == codigo_seguranca:
+                # 3. Verifica o Código de Segurança E a Senha do Professor
+                if prof_data['Codigo_Seguranca'] == codigo_seguranca and prof_data['Senha'] == senha:
                     aluno_info = prof_data
                     senha_valida = True
-                else:
-                    senha_valida = False
-            else:
-                aluno_info = None
-                senha_valida = False
+                #else: senha_valida permanece False
+            #else: aluno_info permanece None e senha_valida permanece False
+
         else:
              conn.close()
              return jsonify({"status": "error", "message": "Tipo de usuário inválido."}), 400
@@ -748,6 +760,7 @@ def handle_login():
         conn.close()
 
         if aluno_info and senha_valida:
+            # Login bem-sucedido (simulação)
             return jsonify({
                 "status": "success", 
                 "message": "Login bem-sucedido.", 
@@ -758,7 +771,8 @@ def handle_login():
                 }
             }), 200
         else:
-            return jsonify({"status": "error", "message": "Credenciais inválidas."}), 401
+            # Falha na autenticação
+            return jsonify({"status": "error", "message": "Credenciais (RA/Funcional, Senha ou Código) inválidas."}), 401
 
     except Exception as e:
         print(f"❌ Erro na rota /login: {e}")
