@@ -567,6 +567,7 @@ def buscar_material_estudo_api(topico: str) -> dict:
         "3. Um exercício prático (com resposta).\n"
         "4. **Busque na web** e adicione **2 sugestões de links relevantes (vídeo-aulas ou artigos) sobre o tópico, formatados como links Markdown [Título](URL)**. "
         "Responda em português. Mantenha o tom acadêmico-informal."
+        "Encaminhe todo o material gerado sob as especificações acima para o usuário para que ele posso vizualizar tudo e estudar."
     )
 
     try:
@@ -833,6 +834,7 @@ init_db()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
