@@ -30,7 +30,8 @@
             
             /* Fundo com a imagem da cidade */
             background-color: var(--p5-black); 
-            background-image: url('static/background.jpg'); /* Mantenha sua imagem de fundo */
+            /* ALTERADO: Caminho da imagem para a pasta static */
+            background-image: url('static/background.jpg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -91,7 +92,19 @@
         }
         
         .message { margin-bottom: 15px; display: flex; align-items: flex-start; }
-        .bot-icon { width: 60px; height: 60px; background-color: var(--p5-black); border: 2px solid var(--p5-white); margin-right: 10px; flex-shrink: 0; background-image: url('static/joker_icon.png'); background-size: cover; filter: grayscale(100%); clip-path: polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%); }
+        .bot-icon { 
+            width: 60px; 
+            height: 60px; 
+            background-color: var(--p5-black); 
+            border: 2px solid var(--p5-white); 
+            margin-right: 10px; 
+            flex-shrink: 0; 
+            /* ALTERADO: Caminho da imagem para a pasta static */
+            background-image: url('static/joker_icon.png');
+            background-size: cover; 
+            filter: grayscale(100%); 
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%); 
+        }
         .bot-text { background-color: var(--p5-black); color: var(--p5-white); padding: 8px 15px; max-width: 70%; font-size: 1em; clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%); position: relative; white-space: pre-wrap; }
         .message.user { justify-content: flex-end; }
         .user-text { background-color: var(--p5-white); color: var(--p5-black); padding: 8px 15px; max-width: 75%; font-size: 1em; clip-path: polygon(0 20%, 10% 0, 100% 0, 100% 100%, 0 100%); }
@@ -200,18 +213,18 @@
 
                 <div id="aluno-fields">
                     <label for="ra">RA:</label>
-                    <input type="text" id="ra" placeholder="Seu RA" required>
+                    <input type="text" id="ra" name="ra" placeholder="Seu RA">
                     <label for="senha-aluno">Senha (Fixo: 123456):</label>
-                    <input type="password" id="senha-aluno" placeholder="Senha" required>
+                    <input type="password" id="senha-aluno" name="senha_aluno" placeholder="Senha">
                 </div>
 
                 <div id="professor-fields" style="display:none;">
                     <label for="funcional">Funcional (RA):</label>
-                    <input type="text" id="funcional" placeholder="Seu RA de Professor" required>
+                    <input type="text" id="funcional" name="funcional" placeholder="Seu RA de Professor">
                     <label for="codigo-seguranca">Código de Segurança (Fixo: 010101):</label>
-                    <input type="text" id="codigo-seguranca" placeholder="Código de 6 dígitos" required>
+                    <input type="text" id="codigo-seguranca" name="codigo_seguranca" placeholder="Código de 6 dígitos">
                     <label for="senha-professor">Senha do Professor (Fixo: professorsenha):</label>
-                    <input type="password" id="senha-professor" placeholder="Senha" required>
+                    <input type="password" id="senha-professor" name="senha_professor" placeholder="Senha">
                 </div>
 
                 <button type="submit">LOGIN</button>
@@ -229,216 +242,214 @@
     </div>
 
     <script>
-    // ⚠️ IMPORTANTE: Use 'http://127.0.0.1:5000' para teste local.
-    const API_BASE_URL = 'https://joker-bot-academico.onrender.com'; 
-    
-    // --- Referências DOM ---
-    const chatDisplay = document.getElementById('chat-display');
-    const userInput = document.getElementById('user-input');
-    const sendButton = document.getElementById('send-button');
-    const loginScreen = document.getElementById('login-screen');
-    const loginForm = document.getElementById('login-form');
-    const loginStatus = document.getElementById('login-status');
-    const headerTitle = document.getElementById('header-title');
-    const userTypeSelect = document.getElementById('user-type');
-    const alunoFields = document.getElementById('aluno-fields');
-    const professorFields = document.getElementById('professor-fields');
-    
-    // Referências explícitas aos campos de input
-    const raInput = document.getElementById('ra');
-    const senhaAlunoInput = document.getElementById('senha-aluno');
-    const funcionalInput = document.getElementById('funcional');
-    const codigoSegurancaInput = document.getElementById('codigo-seguranca');
-    const senhaProfessorInput = document.getElementById('senha-professor');
-    
-    // --- VARIÁVEIS DE ESTADO (IMPORTANTE) ---
-    let loggedUser = {
-        ra: null,
-        nome: null,
-        tipo_usuario: null // 'aluno' ou 'professor'
-    };
-
-    // --- FUNÇÕES DE LÓGICA DE LOGIN ---
-
-    userTypeSelect.addEventListener('change', (e) => {
-        if (e.target.value === 'aluno') {
-            alunoFields.style.display = 'block';
-            professorFields.style.display = 'none';
-        } else {
-            alunoFields.style.display = 'none';
-            professorFields.style.display = 'block';
-        }
-    });
-
-    loginForm.addEventListener('submit', async (e) => {
-        // ESSENCIAL: Evita que o formulário recarregue a página
-        e.preventDefault(); 
+        // ALTERADO: URL da API para o Render
+        const API_BASE_URL = 'https://joker-bot-academico.onrender.com';
         
-        loginStatus.textContent = 'Autenticando...';
+        // --- Referências DOM ---
+        const chatDisplay = document.getElementById('chat-display');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const loginScreen = document.getElementById('login-screen');
+        const loginForm = document.getElementById('login-form');
+        const loginStatus = document.getElementById('login-status');
+        const headerTitle = document.getElementById('header-title');
+        const userTypeSelect = document.getElementById('user-type');
+        const alunoFields = document.getElementById('aluno-fields');
+        const professorFields = document.getElementById('professor-fields');
         
-        const userType = userTypeSelect.value;
-        let payload = { tipo_usuario: userType };
-
-        if (userType === 'aluno') {
-            payload.ra = raInput.value.trim().toUpperCase();
-            payload.senha = senhaAlunoInput.value.trim();
-            
-            if (!payload.ra || !payload.senha) {
-                loginStatus.textContent = "Aluno: RA e Senha são obrigatórios.";
-                return; 
-            }
-
-        } else {
-            // Professor: 3 campos obrigatórios
-            payload.funcional = funcionalInput.value.trim().toUpperCase();
-            payload.codigo_seguranca = codigoSegurancaInput.value.trim();
-            payload.senha = senhaProfessorInput.value.trim();
-            
-            if (!payload.funcional || !payload.codigo_seguranca || !payload.senha) {
-                loginStatus.textContent = "Professor: Funcional, Código e Senha são obrigatórios.";
-                return; 
-            }
-            
-            if (payload.codigo_seguranca.length !== 6) {
-                loginStatus.textContent = "Professor: O Código de Segurança deve ter 6 dígitos.";
-                return; 
-            }
-        }
+        // Referências explícitas aos campos de input
+        const raInput = document.getElementById('ra');
+        const senhaAlunoInput = document.getElementById('senha-aluno');
+        const funcionalInput = document.getElementById('funcional');
+        const codigoSegurancaInput = document.getElementById('codigo-seguranca');
+        const senhaProfessorInput = document.getElementById('senha-professor');
         
-        // --- CHAMA O ENDPOINT /login DO PYTHON ---
-        try {
-            const response = await fetch(`${API_BASE_URL}/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-
-            if (response.status === 200 && data.status === 'success') {
-                loggedUser = data.user;
-                
-                // Transição para o CHAT
-                loginScreen.style.display = 'none';
-                chatDisplay.style.display = 'flex';
-                document.querySelector('.chat-input').style.display = 'flex';
-                
-                const welcomeMsg = loggedUser.tipo_usuario === 'professor' 
-                    ? `Professor ${loggedUser.nome}, seja bem-vindo(a). Suas permissões de **LANÇAMENTO E CONSULTA** estão ativas. O que faremos hoje?`
-                    : `Bem-vindo(a) ${loggedUser.nome}. Diga seu **RA** para ver seu Histórico ou o **Tópico** para gerar Material de Estudo.`;
-                
-                appendMessage('bot', welcomeMsg);
-                headerTitle.textContent = `${loggedUser.nome} - ${loggedUser.tipo_usuario.toUpperCase()}`;
-
-            } else {
-                loginStatus.textContent = data.message || 'Erro de login. Tente novamente.';
-            }
-
-        } catch (error) {
-            console.error('Erro de rede ao logar:', error);
-            loginStatus.textContent = "Falha na conexão com o servidor. Verifique a URL e o Back-end.";
-        }
-    });
-
-
-    // --- FUNÇÕES DE INTERFACE ---
-
-    function appendMessage(sender, text) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', sender);
-
-        const formattedText = text
-            .replace(/\n/g, '<br>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-        if (sender === 'bot') {
-            messageDiv.innerHTML = `
-                <div class="bot-icon"></div>
-                <div class="bot-text">${formattedText}</div>
-            `;
-        } else {
-            messageDiv.innerHTML = `<div class="user-text">${text}</div>`;
-        }
-        
-        chatDisplay.appendChild(messageDiv);
-        chatDisplay.scrollTop = chatDisplay.scrollHeight;
-    }
-
-    function showLoading() {
-        const loadingMessage = document.createElement('div');
-        loadingMessage.classList.add('message', 'bot', 'loading');
-        loadingMessage.innerHTML = `<div class="bot-icon"></div><div class="bot-text">Aguarde... Analisando a Meta Cognitiva.</div>`;
-        loadingMessage.id = 'loading-indicator';
-        chatDisplay.appendChild(loadingMessage);
-        chatDisplay.scrollTop = chatDisplay.scrollHeight;
-    }
-
-    function hideLoading() {
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.remove();
-        }
-    }
-
-    // --- FUNÇÃO DE LÓGICA CORE (Chama a Rota Unificada do Python) ---
-
-    async function processUserMessage(message) {
-        // Envia o tipo_usuario logado para o Python controlar as permissões
-        const payload = { 
-            message: message, 
-            tipo_usuario: loggedUser.tipo_usuario
+        // --- VARIÁVEIS DE ESTADO (IMPORTANTE) ---
+        let loggedUser = {
+            ra: null,
+            nome: null,
+            tipo_usuario: null // 'aluno' ou 'professor'
         };
 
-        showLoading();
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/web_router`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+        // --- FUNÇÕES DE LÓGICA DE LOGIN ---
 
-            const data = await response.json();
-            
-            if (response.status === 200 && data.status === 'success') {
-                return data.message;
+        userTypeSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'aluno') {
+                alunoFields.style.display = 'block';
+                professorFields.style.display = 'none';
             } else {
-                return `Joker: Ops! ${data.message || 'Ocorreu um erro desconhecido no servidor.'}`;
+                alunoFields.style.display = 'none';
+                professorFields.style.display = 'block';
             }
+        });
 
-        } catch (error) {
-            console.error('Erro ao chamar a API:', error);
-            return "Joker: Falha na comunicação com o servidor. Verifique se o Back-end Python está rodando e se a URL está correta.";
-        } finally {
-            hideLoading();
+        loginForm.addEventListener('submit', async (e) => {
+            // ESSENCIAL: Evita que o formulário recarregue a página
+            e.preventDefault(); 
+            
+            loginStatus.textContent = 'Autenticando...';
+            
+            const userType = userTypeSelect.value;
+            let payload = { tipo_usuario: userType };
+
+            if (userType === 'aluno') {
+                payload.ra = raInput.value.trim().toUpperCase();
+                payload.senha = senhaAlunoInput.value.trim();
+                
+                // Validação feita pelo JavaScript
+                if (!payload.ra || !payload.senha) {
+                    loginStatus.textContent = "Aluno: RA e Senha são obrigatórios.";
+                    return; 
+                }
+
+            } else {
+                // Professor: 3 campos obrigatórios
+                payload.funcional = funcionalInput.value.trim().toUpperCase();
+                payload.codigo_seguranca = codigoSegurancaInput.value.trim();
+                payload.senha = senhaProfessorInput.value.trim();
+                
+                // Validação feita pelo JavaScript
+                if (!payload.funcional || !payload.codigo_seguranca || !payload.senha) {
+                    loginStatus.textContent = "Professor: Funcional, Código e Senha são obrigatórios.";
+                    return; 
+                }
+                
+                if (payload.codigo_seguranca.length !== 6) {
+                    loginStatus.textContent = "Professor: O Código de Segurança deve ter 6 dígitos.";
+                    return; 
+                }
+            }
+            
+            // --- CHAMA O ENDPOINT /login DO PYTHON ---
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.status === 200 && data.status === 'success') {
+                    loggedUser = data.user;
+                    
+                    // Transição para o CHAT
+                    loginScreen.style.display = 'none';
+                    chatDisplay.style.display = 'flex';
+                    document.querySelector('.chat-input').style.display = 'flex';
+                    
+                    const welcomeMsg = loggedUser.tipo_usuario === 'professor' 
+                        ? `Professor ${loggedUser.nome}, seja bem-vindo(a). Suas permissões de **LANÇAMENTO E CONSULTA** estão ativas. O que faremos hoje?`
+                        : `Bem-vindo(a) ${loggedUser.nome}. Diga seu **RA** para ver seu Histórico ou o **Tópico** para gerar Material de Estudo.`;
+                    
+                    appendMessage('bot', welcomeMsg);
+                    headerTitle.textContent = `${loggedUser.nome} - ${loggedUser.tipo_usuario.toUpperCase()}`;
+
+                } else {
+                    loginStatus.textContent = data.message || 'Erro de login. Tente novamente.';
+                }
+
+            } catch (error) {
+                console.error('Erro de rede ao logar:', error);
+                loginStatus.textContent = "Falha na conexão com o servidor. Verifique a URL e o Back-end.";
+            }
+        });
+
+
+        // --- FUNÇÕES DE INTERFACE ---
+
+        function appendMessage(sender, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender);
+
+            const formattedText = text
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            if (sender === 'bot') {
+                messageDiv.innerHTML = `
+                    <div class="bot-icon"></div>
+                    <div class="bot-text">${formattedText}</div>
+                `;
+            } else {
+                messageDiv.innerHTML = `<div class="user-text">${text}</div>`;
+            }
+            
+            chatDisplay.appendChild(messageDiv);
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
         }
-    }
 
-
-    // --- EVENT LISTENERS E CHAT ---
-
-    async function handleSend() {
-        const message = userInput.value.trim();
-        if (message === '') return;
-
-        appendMessage('user', message);
-        userInput.value = '';
-
-        const botResponse = await processUserMessage(message);
-        appendMessage('bot', botResponse);
-    }
-
-    sendButton.addEventListener('click', handleSend);
-    userInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            handleSend();
+        function showLoading() {
+            const loadingMessage = document.createElement('div');
+            loadingMessage.classList.add('message', 'bot', 'loading');
+            loadingMessage.innerHTML = `<div class="bot-icon"></div><div class="bot-text">Aguarde... Analisando a Meta Cognitiva.</div>`;
+            loadingMessage.id = 'loading-indicator';
+            chatDisplay.appendChild(loadingMessage);
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
         }
-    });
+
+        function hideLoading() {
+            const loadingIndicator = document.getElementById('loading-indicator');
+            if (loadingIndicator) {
+                loadingIndicator.remove();
+            }
+        }
+
+        // --- FUNÇÃO DE LÓGICA CORE (Chama a Rota Unificada do Python) ---
+
+        async function processUserMessage(message) {
+            // Envia o tipo_usuario logado para o Python controlar as permissões
+            const payload = { 
+                message: message, 
+                tipo_usuario: loggedUser.tipo_usuario
+            };
+
+            showLoading();
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/web_router`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                if (response.status === 200 && data.status === 'success') {
+                    return data.message;
+                } else {
+                    return `Joker: Ops! ${data.message || 'Ocorreu um erro desconhecido no servidor.'}`;
+                }
+
+            } catch (error) {
+                console.error('Erro ao chamar a API:', error);
+                return "Joker: Falha na comunicação com o servidor. Verifique se o Back-end Python está rodando e se a URL está correta.";
+            } finally {
+                hideLoading();
+            }
+        }
+
+
+        // --- EVENT LISTENERS E CHAT ---
+
+        async function handleSend() {
+            const message = userInput.value.trim();
+            if (message === '') return;
+
+            appendMessage('user', message);
+            userInput.value = '';
+
+            const botResponse = await processUserMessage(message);
+            appendMessage('bot', botResponse);
+        }
+
+        sendButton.addEventListener('click', handleSend);
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                handleSend();
+            }
+        });
 
     </script>
 </body>
 </html>
-
-
-
-
