@@ -28,15 +28,15 @@
             margin: 0;
             overflow: hidden; 
             
-            /* Fundo com a imagem da cidade (image_7c385a.jpg) */
+            /* Fundo com a imagem da cidade */
             background-color: var(--p5-black); 
-            background-image: url('background.jpg');
+            background-image: url('background.jpg'); /* Mantenha sua imagem de fundo */
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
         }
 
-        /* Overlay escuro para dar destaque ao chat */
+        /* Overlay escuro para dar destaque ao chat/login */
         body::before {
             content: '';
             position: absolute;
@@ -48,7 +48,7 @@
             z-index: 5;
         }
 
-        /* Contêiner Principal do Chat (A tela do celular/SNS) */
+        /* Contêiner Principal */
         .chat-container {
             width: 90%;
             max-width: 400px;
@@ -68,7 +68,6 @@
             padding: 15px 10px;
             text-align: left;
             border-bottom: 5px solid var(--p5-white);
-            position: relative;
         }
 
         .chat-header h1 {
@@ -77,116 +76,151 @@
             font-size: 1.8em;
             letter-spacing: 2px;
             text-shadow: 1px 1px 0 var(--p5-red);
-            /* Sem o 'M' grande, o padding é menor */
             padding-left: 10px; 
         }
-        
-        /* O seletor ::before que continha o 'M' foi removido aqui. */
 
-        /* Área de Mensagens (Vermelho P5) */
+        /* --- Estilos do Chat (para quando o login for bem-sucedido) --- */
+
         .chat-display {
             flex-grow: 1;
             background-color: var(--p5-red); 
             padding: 10px;
             overflow-y: auto;
             border-bottom: 5px solid var(--p5-white);
+            display: none; /* Escondido inicialmente */
         }
         
-        /* Estilos dos Balões de Mensagem */
-
-        .message {
-            margin-bottom: 15px;
-            display: flex;
-            align-items: flex-start;
-        }
-
-        /* Ícone do Bot (Joker) - TAMANHO AUMENTADO */
-        .bot-icon {
-            width: 60px; 
-            height: 60px;
-            background-color: var(--p5-black);
-            border: 2px solid var(--p5-white);
-            margin-right: 10px;
-            flex-shrink: 0;
-            background-image: url('joker_icon.png'); 
-            background-size: cover;
-            filter: grayscale(100%); 
-            clip-path: polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%); 
-        }
-
-        /* Balão do Bot */
-        .bot-text {
-            background-color: var(--p5-black);
-            color: var(--p5-white);
-            padding: 8px 15px;
-            max-width: 70%; 
-            font-size: 1em;
-            clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
-            position: relative;
-            white-space: pre-wrap;
-        }
-
-        /* Balão do Usuário (Navegando na direita) */
-        .message.user {
-            justify-content: flex-end;
-        }
-
-        .user-text {
-            background-color: var(--p5-white);
-            color: var(--p5-black);
-            padding: 8px 15px;
-            max-width: 75%;
-            font-size: 1em;
-            clip-path: polygon(0 20%, 10% 0, 100% 0, 100% 100%, 0 100%);
-        }
-
-        /* Área de Input */
+        .message { margin-bottom: 15px; display: flex; align-items: flex-start; }
+        .bot-icon { width: 60px; height: 60px; background-color: var(--p5-black); border: 2px solid var(--p5-white); margin-right: 10px; flex-shrink: 0; background-image: url('joker_icon.png'); background-size: cover; filter: grayscale(100%); clip-path: polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%); }
+        .bot-text { background-color: var(--p5-black); color: var(--p5-white); padding: 8px 15px; max-width: 70%; font-size: 1em; clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%); position: relative; white-space: pre-wrap; }
+        .message.user { justify-content: flex-end; }
+        .user-text { background-color: var(--p5-white); color: var(--p5-black); padding: 8px 15px; max-width: 75%; font-size: 1em; clip-path: polygon(0 20%, 10% 0, 100% 0, 100% 100%, 0 100%); }
+        
         .chat-input {
             padding: 10px;
             background-color: var(--p5-red); 
             border-top: 5px solid var(--p5-white);
-            display: flex;
+            display: none; /* Escondido inicialmente */
         }
 
-        .chat-input input[type="text"] {
+        .chat-input input[type="text"] { flex-grow: 1; padding: 10px; border: 3px solid var(--p5-black); font-size: 1em; background-color: var(--p5-white); color: var(--p5-black); font-family: var(--p5-font); outline: none; }
+        .chat-input button { background-color: var(--p5-black); color: var(--p5-white); border: 3px solid var(--p5-white); padding: 10px 15px; margin-left: 5px; font-family: var(--p5-font-bold); font-size: 1em; cursor: pointer; clip-path: polygon(0 0, 100% 0, 100% 80%, 75% 100%, 0 100%); transition: background-color 0.1s; }
+        .chat-input button:hover { background-color: var(--p5-red); color: var(--p5-white); }
+        
+        /* --- Estilos da Tela de Login --- */
+        
+        #login-screen {
             flex-grow: 1;
-            padding: 10px;
-            border: 3px solid var(--p5-black);
-            font-size: 1em;
-            background-color: var(--p5-white);
-            color: var(--p5-black);
-            font-family: var(--p5-font);
-            outline: none;
+            padding: 20px;
+            background-color: var(--p5-black); /* Fundo preto para destaque */
+            color: var(--p5-white);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
         }
 
-        .chat-input button {
+        #login-screen h2 {
+            font-family: var(--p5-font-bold);
+            color: var(--p5-red);
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 0 var(--p5-white);
+        }
+
+        #login-form {
+            width: 100%;
+            max-width: 300px;
+            padding: 20px;
+            background-color: var(--p5-red); /* Formulário em vermelho */
+            border: 3px solid var(--p5-white);
+        }
+
+        #login-form label, #login-form select, #login-form input {
+            display: block;
+            width: calc(100% - 20px);
+            margin: 10px auto;
+            padding: 10px;
+            font-family: var(--p5-font);
+            font-size: 1em;
+            color: var(--p5-black);
+            border: 2px solid var(--p5-black);
+        }
+
+        #login-form select {
+             width: 100%; /* Ajuste para preencher melhor o form */
+        }
+        
+        #login-form button {
+            width: 100%;
             background-color: var(--p5-black);
             color: var(--p5-white);
             border: 3px solid var(--p5-white);
             padding: 10px 15px;
-            margin-left: 5px;
+            margin-top: 20px;
             font-family: var(--p5-font-bold);
-            font-size: 1em;
+            font-size: 1.2em;
             cursor: pointer;
-            clip-path: polygon(0 0, 100% 0, 100% 80%, 75% 100%, 0 100%);
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
             transition: background-color 0.1s;
         }
 
-        .chat-input button:hover {
-            background-color: var(--p5-red);
-            color: var(--p5-white);
+        #login-form button:hover {
+            background-color: var(--p5-white);
+            color: var(--p5-red);
+            border-color: var(--p5-red);
         }
+        
+        #login-status {
+            color: var(--p5-white);
+            margin-top: 10px;
+            font-size: 0.9em;
+            min-height: 20px;
+        }
+
     </style>
 </head>
 <body>
 
     <div class="chat-container">
         <div class="chat-header">
-            <h1>JOKER - SISTEMA ACADÊMICO</h1>
+            <h1 id="header-title">ACESSO JOKER BOT</h1>
+        </div>
+
+        <div id="login-screen">
+            <h2>INICIAR SESSÃO</h2>
+            <form id="login-form">
+                
+                <label for="user-type">Tipo de Usuário:</label>
+                <select id="user-type" name="user-type">
+                    <option value="aluno">Aluno</option>
+                    <option value="professor">Professor</option>
+                </select>
+
+                <div id="aluno-fields">
+                    <label for="ra">RA:</label>
+                    <input type="text" id="ra" placeholder="Seu RA" required>
+                    <label for="senha-aluno">Senha (Fixo: 123456):</label>
+                    <input type="password" id="senha-aluno" placeholder="Senha" required>
+                </div>
+
+                <div id="professor-fields" style="display:none;">
+                    <label for="funcional">Funcional (RA):</label>
+                    <input type="text" id="funcional" placeholder="Seu RA de Professor" required>
+                    <label for="codigo-seguranca">Código de Segurança (Fixo: 010101):</label>
+                    <input type="text" id="codigo-seguranca" placeholder="Código de 6 dígitos" required>
+                    <label for="senha-professor">Senha do Professor (Fixo: professorsenha):</label>
+                    <input type="password" id="senha-professor" placeholder="Senha" required>
+                </div>
+
+                <button type="submit">LOGIN</button>
+            </form>
+            <div id="login-status"></div>
         </div>
 
         <div class="chat-display" id="chat-display">
-            </div>
+        </div>
 
         <div class="chat-input">
             <input type="text" id="user-input" placeholder="Enter message..." autofocus>
@@ -201,6 +235,87 @@
         const chatDisplay = document.getElementById('chat-display');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
+        const loginScreen = document.getElementById('login-screen');
+        const loginForm = document.getElementById('login-form');
+        const loginStatus = document.getElementById('login-status');
+        const headerTitle = document.getElementById('header-title');
+        
+        const userTypeSelect = document.getElementById('user-type');
+        const alunoFields = document.getElementById('aluno-fields');
+        const professorFields = document.getElementById('professor-fields');
+        
+        // --- VARIÁVEIS DE ESTADO (IMPORTANTE) ---
+        let loggedUser = {
+            ra: null,
+            nome: null,
+            tipo_usuario: null // 'aluno' ou 'professor'
+        };
+
+        // --- FUNÇÕES DE LÓGICA DE LOGIN (NOVO) ---
+
+        userTypeSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'aluno') {
+                alunoFields.style.display = 'block';
+                professorFields.style.display = 'none';
+            } else {
+                alunoFields.style.display = 'none';
+                professorFields.style.display = 'block';
+            }
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loginStatus.textContent = 'Autenticando...';
+            
+            const userType = userTypeSelect.value;
+            let payload = { tipo_usuario: userType };
+
+            if (userType === 'aluno') {
+                payload.ra = document.getElementById('ra').value;
+                payload.senha = document.getElementById('senha-aluno').value;
+            } else {
+                payload.funcional = document.getElementById('funcional').value;
+                payload.codigo_seguranca = document.getElementById('codigo-seguranca').value;
+                payload.senha = document.getElementById('senha-professor').value;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.status === 200 && data.status === 'success') {
+                    // Armazena as informações do usuário
+                    loggedUser = data.user;
+                    
+                    // Altera a interface para o CHAT
+                    loginScreen.style.display = 'none';
+                    chatDisplay.style.display = 'flex';
+                    document.querySelector('.chat-input').style.display = 'flex';
+                    
+                    // Mensagem de boas-vindas personalizada
+                    const welcomeMsg = loggedUser.tipo_usuario === 'professor' 
+                        ? `Professor ${loggedUser.nome}, seja bem-vindo(a). Suas permissões de **LANÇAMENTO E CONSULTA** estão ativas. O que faremos hoje?`
+                        : `Bem-vindo(a) ${loggedUser.nome}. Diga seu **RA** para ver seu Histórico ou o **Tópico** para gerar Material de Estudo.`;
+                    
+                    appendMessage('bot', welcomeMsg);
+                    
+                    headerTitle.textContent = `${loggedUser.nome} - ${loggedUser.tipo_usuario.toUpperCase()}`;
+
+                } else {
+                    loginStatus.textContent = data.message || 'Erro de login. Tente novamente.';
+                }
+
+            } catch (error) {
+                console.error('Erro de rede ao logar:', error);
+                loginStatus.textContent = "Falha na conexão com o servidor. Verifique a URL e o Back-end.";
+            }
+        });
+
 
         // --- FUNÇÕES DE INTERFACE ---
 
@@ -245,28 +360,24 @@
         // --- FUNÇÃO DE LÓGICA CORE (Chama a Rota Unificada do Python) ---
 
         async function processUserMessage(message) {
-            const endpoint = 'web_router';
-            // OBSERVAÇÃO: A rota /web_router precisa saber o tipo de usuário para aplicar permissões.
-            // Aqui estamos simulando que é sempre 'aluno' por padrão para este Front-end.
-            // Para testar o Professor, você teria que modificar este payload para:
-            // const payload = { message: message, tipo_usuario: 'professor' };
-            const payload = { message: message, tipo_usuario: 'aluno' };
+            // Usa as informações do usuário logado no payload
+            const payload = { 
+                message: message, 
+                tipo_usuario: loggedUser.tipo_usuario
+            };
 
 
             showLoading();
             
             try {
-                const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
+                const response = await fetch(`${API_BASE_URL}/web_router`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
                 
-                // O Python (Gemini) já retorna o texto final formatado
                 if (response.status === 200 && data.status === 'success') {
                     return data.message;
                 } else {
@@ -302,10 +413,7 @@
             }
         });
 
-        // Mensagem de boas-vindas ao carregar a página
-        window.onload = () => {
-            appendMessage('bot', "Bem-vindo, Diga seu **RA** para ver o Histórico ou o **Tópico** para gerar Material de Estudo.");
-        };
     </script>
 </body>
 </html>
+
