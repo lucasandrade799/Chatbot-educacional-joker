@@ -12,8 +12,7 @@ from flask_cors import CORS
 API_KEY_GEMINI = os.environ.get('GEMINI_API_KEY')
 DATABASE_NAME = 'BDchatbot.db'
 
-# --- 1. SCRIPT SQL COMPLETO ---
-# ATENÇÃO: Apenas 8 matérias com NP1/NP2/PIM e 1 PIM por semestre.
+# --- 1. SCRIPT SQL COMPLETO (COM CAMPO DE SENHA) ---
 SQL_SCRIPT_CONTENT = """
 -- CRIAÇÃO DAS TABELAS
 CREATE TABLE IF NOT EXISTS Alunos (
@@ -22,14 +21,14 @@ CREATE TABLE IF NOT EXISTS Alunos (
     Nome_Completo VARCHAR(100) NOT NULL,
     Tipo_Usuario VARCHAR(10) NOT NULL DEFAULT 'Aluno',
     Codigo_Seguranca VARCHAR(6) NULL,
-    Senha VARCHAR(100) NOT NULL 
+    Senha VARCHAR(100) NOT NULL -- NOVO CAMPO DE SENHA
 );
 
 CREATE TABLE IF NOT EXISTS Disciplinas (
     id_disciplina INTEGER PRIMARY KEY AUTOINCREMENT,
     Nome_Disciplina VARCHAR(100) NOT NULL,
     Semestre INT NOT NULL,
-    Tipo_Avaliacao VARCHAR(10) NOT NULL, -- NORMAL (NP1/NP2/PIM), ED (Status), PIM (Nota Única)
+    Tipo_Avaliacao VARCHAR(10) NOT NULL, -- AVAS, ED, PIM
     UNIQUE (Nome_Disciplina, Semestre)
 );
 
@@ -46,49 +45,50 @@ CREATE TABLE IF NOT EXISTS Historico_Academico (
     UNIQUE (fk_id_aluno, fk_id_disciplina)
 );
 
--- POPULANDO A TABELA DISCIPLINAS (8 NORMAL + 1 PIM por semestre)
+-- POPULANDO A TABELA DISCIPLINAS (4 AVAS, 4 ED, 1 PIM por semestre)
 INSERT OR IGNORE INTO Disciplinas (Nome_Disciplina, Semestre, Tipo_Avaliacao) VALUES
--- Semestre 1: 8 matérias com NP1/NP2/PIM
-('Introdução à Programação', 1, 'NORMAL'), 
-('Lógica de Programação', 1, 'NORMAL'), 
-('Arquitetura de Computadores', 1, 'NORMAL'),
-('Redes de Computadores', 1, 'NORMAL'), 
-('Sistemas de Informação', 1, 'NORMAL'),
-('Estrutura de Dados I', 1, 'NORMAL'),
-('Matemática Aplicada', 1, 'NORMAL'),
-('Comunicação Empresarial', 1, 'NORMAL'), 
+-- Semestre 1
+('Introdução à Programação', 1, 'AVAS'), 
+('Lógica de Programação', 1, 'AVAS'), 
+('Fundamentos de Sistemas', 1, 'AVAS'), 
+('Matemática Discreta', 1, 'AVAS'), 
+('Arquitetura de Computadores', 1, 'ED'), 
+('Redes de Computadores', 1, 'ED'),       
+('Comunicação Empresarial', 1, 'ED'),     
+('Ética e Cidadania', 1, 'ED'),           
 ('PIM I', 1, 'PIM'), 
 
--- Semestre 2: 8 matérias com NP1/NP2/PIM
-('Estruturas de Dados II', 2, 'NORMAL'),
-('Banco de Dados I', 2, 'NORMAL'), 
-('Sistemas Operacionais', 2, 'NORMAL'), 
-('Álgebra Linear', 2, 'NORMAL'),
-('Engenharia de Software I', 2, 'NORMAL'),
-('Análise de Sistemas', 2, 'NORMAL'),
-('Tópicos Avançados', 2, 'NORMAL'),
-('Gestão de Projetos', 2, 'NORMAL'),
+-- Semestre 2
+('Estruturas de Dados', 2, 'AVAS'),
+('Banco de Dados I', 2, 'AVAS'), 
+('Sistemas Operacionais', 2, 'AVAS'), 
+('Álgebra Linear', 2, 'AVAS'), 
+('Engenharia de Software', 2, 'ED'), 
+('Gestão de Projetos', 2, 'ED'), 
+('Análise de Sistemas', 2, 'ED'), 
+('Tópicos Avançados', 2, 'ED'),
 ('PIM II', 2, 'PIM');
 
 -- POPULANDO A TABELA ALUNOS (Senhas e Códigos de Segurança inclusos)
 INSERT OR IGNORE INTO Alunos (RA, Nome_Completo, Tipo_Usuario, Codigo_Seguranca, Senha) VALUES
+('R3487E5', 'Matheus de Assis Alves', 'Aluno', NULL, '123456'), 
 ('R6738H5', 'Matheus Balzi da Silva', 'Aluno', NULL, '123456'), 
 ('R818888', 'Lucas Gabriel da Silva Gardezan', 'Aluno', NULL, '123456'),
 ('H755247', 'Matheus Henrique Castro de Oliveira', 'Aluno', NULL, '123456'), 
 ('R848140', 'Thainanda Alves Monteiro', 'Aluno', NULL, '123456'), 
-('820793', 'LUCAS ANDRADE', 'Aluno', NULL, '123456'), -- RA do Lucas Andrade (820793)
+('820793', 'Lucas da Silva Andrade', 'Aluno', NULL, '123456'),
 -- Professor com Código de Segurança e Senha do Professor
-('P12345', 'Prof. SAE NIIJIMA', 'Professor', '010101', 'professorsenha'); 
+('P12345', 'Prof. Eliana', 'Professor', '010101', 'professorsenha'); 
 
--- REGISTRO DO HISTÓRICO ACADÊMICO (Todos os alunos com todas as disciplinas inicialmente NULL)
+-- REGISTRO DO HISTÓRICO ACADÊMICO (sem alteração)
 INSERT OR IGNORE INTO Historico_Academico (fk_id_aluno, fk_id_disciplina, NP1, NP2, Media_Final, Faltas)
 SELECT 
     A.id_aluno, 
     D.id_disciplina,
-    NULL AS NP1, 
-    NULL AS NP2, 
+    CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL ELSE NULL END AS NP1, 
+    CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL ELSE NULL END AS NP2, 
     NULL AS Media_Final, 
-    NULL AS Faltas 
+    NULL AS Faltas       
 FROM Alunos A
 JOIN Disciplinas D;
 """
@@ -99,7 +99,7 @@ CORS(app)
 client = None
 
 if API_KEY_GEMINI:
-    try: 
+    try:
         client = genai.Client(api_key=API_KEY_GEMINI)
         print("✅ Cliente Gemini inicializado com sucesso.")
     except Exception as e:
@@ -110,74 +110,16 @@ else:
 
 # --- 2. FUNÇÕES DE SUPORTE AO BANCO DE DADOS E CÁLCULOS ---
 
-def _get_aluno_id(conn, ra_aluno):
-    """Busca o ID do aluno pelo RA."""
-    cursor = conn.cursor()
-    cursor.execute("SELECT id_aluno FROM Alunos WHERE RA = ?", (ra_aluno,))
-    result = cursor.fetchone()
-    return result['id_aluno'] if result else None
-    
-def _set_test_data(conn, ra_aluno, nome_disciplina, np1=None, np2=None, media_final=None):
-    """Função auxiliar para popular dados de teste de forma segura."""
-    update_parts = []
-    values = []
-
-    if np1 is not None:
-        update_parts.append("NP1 = ?")
-        values.append(np1)
-    if np2 is not None:
-        update_parts.append("NP2 = ?")
-        values.append(np2)
-    if media_final is not None:
-        update_parts.append("Media_Final = ?")
-        values.append(media_final)
-
-    if not update_parts:
-        return
-
-    sql_update = f"""
-    UPDATE Historico_Academico
-    SET {', '.join(update_parts)}
-    WHERE fk_id_aluno = (SELECT id_aluno FROM Alunos WHERE RA = ?)
-    AND fk_id_disciplina = (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = ?);
-    """
-    values.extend([ra_aluno, nome_disciplina])
-    conn.execute(sql_update, values)
-    conn.commit()
-    
 def init_db():
     """Cria e popula o banco de dados. Chamado apenas no início do servidor."""
     try:
         conn = sqlite3.connect(DATABASE_NAME)
-        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("PRAGMA foreign_keys = ON;")
         cursor.executescript(SQL_SCRIPT_CONTENT)
         conn.commit()
-        
-        # --- PREENCHIMENTO DE DADOS DE TESTE PARA LUCAS ANDRADE (820793) ---
-        RA_LUCAS = '820793'
-        
-        _set_test_data(conn, RA_LUCAS, 'Introdução à Programação', 7.0, 6.0)
-        _set_test_data(conn, RA_LUCAS, 'Lógica de Programação', 8.5, 7.5)
-        _set_test_data(conn, RA_LUCAS, 'Arquitetura de Computadores', 5.0, 9.0)
-        _set_test_data(conn, RA_LUCAS, 'Redes de Computadores', 9.0, 9.0)
-        _set_test_data(conn, RA_LUCAS, 'Sistemas de Informação', 6.0, 6.0)
-        _set_test_data(conn, RA_LUCAS, 'Estrutura de Dados I', 7.0, 7.0)
-        _set_test_data(conn, RA_LUCAS, 'Matemática Aplicada', 5.5, 6.5)
-        _set_test_data(conn, RA_LUCAS, 'Comunicação Empresarial', 8.0, 8.0)
-
-        _set_test_data(conn, RA_LUCAS, 'PIM I', media_final=8.0) # PIM nota 8.0
-        
-        # Recalcula todas as disciplinas NORMAIS após definir o PIM
-        aluno_id = _get_aluno_id(conn, RA_LUCAS)
-        if aluno_id:
-            _recalcular_todas_medias_notas_np_do_semestre(conn, aluno_id, 1)
-        
-        # --- FIM PREENCHIMENTO DE DADOS ---
-        
         conn.close()
-        print(f"✅ Banco de dados '{DATABASE_NAME}' verificado, populado e pronto para uso.")
+        print(f"✅ Banco de dados '{DATABASE_NAME}' verificado e pronto para uso.")
     except sqlite3.Error as e:
         print(f"❌ Erro na inicialização do banco de dados: {e}")
         exit()
@@ -199,8 +141,7 @@ def formatar_valor(valor):
 
 def calcular_media_final(np1, np2, pim_nota):
     """
-    Calcula a média final usando a fórmula: (NP1*40% + NP2*40% + PIM*20%)
-    Válido para TODAS as matérias que usam NP1 e NP2.
+    Calcula a média final usando a fórmula: (NP1*4 + NP2*4 + PIM*2) / 10
     Retorna float se cálculo possível, senão None.
     """
     if np1 is None or np2 is None or pim_nota is None:
@@ -209,14 +150,13 @@ def calcular_media_final(np1, np2, pim_nota):
         np1 = float(np1)
         np2 = float(np2)
         pim_nota = float(pim_nota)
-        # A regra é: (NP1*4 + NP2*4 + PIM*2) / 10
-        media = (np1 * 0.4) + (np2 * 0.4) + (pim_nota * 0.2)
+        media = (np1 * 4 + np2 * 4 + pim_nota * 2) / 10
         return round(media, 2)
     except (ValueError, TypeError):
         return None
     
 def _get_pim_nota(conn, id_aluno, semestre):
-    """Busca a nota PIM (Media_Final) de um aluno para um semestre específico."""
+    """Busca a nota PIM de um aluno para um semestre específico."""
     pim_sql = """
     SELECT H.Media_Final 
     FROM Historico_Academico H
@@ -229,28 +169,24 @@ def _get_pim_nota(conn, id_aluno, semestre):
     # A nota PIM é armazenada no campo Media_Final da disciplina PIM
     return pim_result['Media_Final'] if pim_result and pim_result['Media_Final'] is not None else None
 
-def _recalcular_e_salvar_media_notas_np(conn, id_aluno, nome_disciplina):
+def _recalcular_e_salvar_media_avas(conn, id_aluno, nome_disciplina):
     """
     Busca NP1, NP2 e PIM (do semestre) e recalcula/salva a Media_Final
-    para uma disciplina que usa a regra NP1/NP2/PIM (Tipo_Avaliacao != PIM).
+    para uma disciplina AVAS.
     """
     sql_dados = """
     SELECT 
-        H.id_registro, H.NP1, H.NP2, D.Semestre, D.Tipo_Avaliacao
+        H.id_registro, H.NP1, H.NP2, D.Semestre
     FROM Historico_Academico H
     JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
-    WHERE H.fk_id_aluno = ? AND D.Nome_Disciplina = ? AND D.Tipo_Avaliacao NOT IN ('PIM');
+    WHERE H.fk_id_aluno = ? AND D.Nome_Disciplina = ? AND D.Tipo_Avaliacao = 'AVAS';
     """
     cursor = conn.cursor()
     cursor.execute(sql_dados, (id_aluno, nome_disciplina))
     reg = cursor.fetchone()
 
     if not reg:
-        return False, "Disciplina não encontrada ou é PIM (não usa cálculo NP1/NP2/PIM)."
-    
-    # Se a disciplina for PIM, ela não deve chegar aqui (checado na query)
-    if reg['Tipo_Avaliacao'] in ['PIM']:
-        return False, "Disciplina é PIM. Não há cálculo de média NP1/NP2/PIM."
+        return False, "Disciplina não encontrada ou não é AVAS."
 
     pim_nota = _get_pim_nota(conn, id_aluno, reg['Semestre'])
     
@@ -266,28 +202,28 @@ def _recalcular_e_salvar_media_notas_np(conn, id_aluno, nome_disciplina):
     return True, media
 
 
-def _recalcular_todas_medias_notas_np_do_semestre(conn, id_aluno, semestre):
+def _recalcular_todas_medias_avas_do_semestre(conn, id_aluno, semestre):
     """
-    Recalcula a média de TODAS as disciplinas (exceto PIM) de um semestre,
+    Recalcula a média de TODAS as disciplinas AVAS de um semestre,
     usando a nova nota PIM.
     """
     pim_nota = _get_pim_nota(conn, id_aluno, semestre)
     
-    sql_disciplinas_np = """
+    sql_disciplinas_avas = """
     SELECT 
         H.id_registro, H.NP1, H.NP2, D.Nome_Disciplina
     FROM Historico_Academico H
     JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
-    WHERE H.fk_id_aluno = ? AND D.Semestre = ? AND D.Tipo_Avaliacao NOT IN ('PIM');
+    WHERE H.fk_id_aluno = ? AND D.Semestre = ? AND D.Tipo_Avaliacao = 'AVAS';
     """
     cursor = conn.cursor()
-    cursor.execute(sql_disciplinas_np, (id_aluno, semestre))
-    registros_np = cursor.fetchall()
+    cursor.execute(sql_disciplinas_avas, (id_aluno, semestre))
+    registros_avas = cursor.fetchall()
     
-    if not registros_np:
+    if not registros_avas:
         return 0
         
-    for reg in registros_np:
+    for reg in registros_avas:
         media = calcular_media_final(reg['NP1'], reg['NP2'], pim_nota)
         
         sql_update = """
@@ -296,7 +232,7 @@ def _recalcular_todas_medias_notas_np_do_semestre(conn, id_aluno, semestre):
         cursor.execute(sql_update, (media, reg['id_registro']))
         
     conn.commit()
-    return len(registros_np)
+    return len(registros_avas)
 
 
 # --- 3. FUNÇÕES DE OPERAÇÃO (LÓGICA CORE: Leitura e Escrita) ---
@@ -316,7 +252,7 @@ def lancar_nota_np_api(ra_aluno: str, nome_disciplina: str, np_qual: str, nota: 
     cursor = conn.cursor()
     
     try:
-        # 1. Obter IDs e checar se é NOT IN ('PIM')
+        # 1. Obter IDs e checar se é AVAS
         sql_info = """
         SELECT A.id_aluno, D.Tipo_Avaliacao 
         FROM Alunos A
@@ -331,9 +267,9 @@ def lancar_nota_np_api(ra_aluno: str, nome_disciplina: str, np_qual: str, nota: 
             conn.close()
             return {"status": "error", "message": f"Aluno/Disciplina '{ra_aluno}'/'{nome_disciplina}' não encontrados."}
         
-        if info['Tipo_Avaliacao'] in ['PIM']:
+        if info['Tipo_Avaliacao'] != 'AVAS':
             conn.close()
-            return {"status": "error", "message": f"Lançamento de NP1/NP2 não é permitido para PIM. '{nome_disciplina}' é {info['Tipo_Avaliacao']}."}
+            return {"status": "error", "message": f"Lançamento de NP1/NP2 só é permitido para matérias AVAS. '{nome_disciplina}' é {info['Tipo_Avaliacao']}."}
 
         # 2. Atualizar nota NP
         sql_update_np = f"""
@@ -345,19 +281,19 @@ def lancar_nota_np_api(ra_aluno: str, nome_disciplina: str, np_qual: str, nota: 
         cursor.execute(sql_update_np, (nota, info['id_aluno'], nome_disciplina))
 
         # 3. Recalcular e salvar Media_Final (se possível)
-        sucesso, media = _recalcular_e_salvar_media_notas_np(conn, info['id_aluno'], nome_disciplina)
+        sucesso, media = _recalcular_e_salvar_media_avas(conn, info['id_aluno'], nome_disciplina)
         
         conn.close()
 
         status_media = f"Média Final calculada e salva: {media:.2f}" if media is not None else "Média Final pendente (PIM ou outra NP faltando)."
-        return {"status": "success", "message": f"Nota {np_qual} ({nota:.2f}) lançada para {nome_disciplina} ({ra_aluno}). {status_media}"}
+        return {"status": "success", "message": f"Nota {np_qual} (R${nota:.2f}$) lançada para {nome_disciplina} ({ra_aluno}). {status_media}"}
 
     except sqlite3.Error as e:
         conn.close()
         return {"status": "error", "message": f"Erro no lançamento da nota NP: {e}"}
 
 def lancar_nota_pim_api(ra_aluno: str, nome_disciplina_pim: str, nota: float) -> dict:
-    """Lança a nota PIM e recalcula a Média Final de todas as disciplinas com NP1/NP2 do semestre."""
+    """Lança a nota PIM e recalcula a Média Final de todas as AVAS do semestre."""
     ra_aluno = ra_aluno.strip().upper()
     nome_disciplina_pim = nome_disciplina_pim.strip()
 
@@ -396,26 +332,62 @@ def lancar_nota_pim_api(ra_aluno: str, nome_disciplina_pim: str, nota: float) ->
         """
         cursor.execute(sql_update_pim, (nota, info['id_aluno'], nome_disciplina_pim))
 
-        # 3. Recalcular e salvar Media_Final para todas as disciplinas com NP1/NP2 do semestre
-        count_recalculada = _recalcular_todas_medias_notas_np_do_semestre(conn, info['id_aluno'], info['Semestre'])
+        # 3. Recalcular e salvar Media_Final para todas as AVAS do semestre
+        count_avas = _recalcular_todas_medias_avas_do_semestre(conn, info['id_aluno'], info['Semestre'])
         
         conn.close()
 
-        return {"status": "success", "message": f"Nota PIM ({nota:.2f}) lançada para o semestre {info['Semestre']} ({ra_aluno}). {count_recalculada} Média(s) Final(is) recalculada(s) (40% NP1 + 40% NP2 + 20% PIM)."}
+        return {"status": "success", "message": f"Nota PIM ({nota:.2f}) lançada para o semestre {info['Semestre']} ({ra_aluno}). {count_avas} Média(s) Final(is) AVAS recalculada(s)."}
 
     except sqlite3.Error as e:
         conn.close()
         return {"status": "error", "message": f"Erro no lançamento da nota PIM: {e}"}
 
 def marcar_ed_concluido_api(ra_aluno: str, nome_disciplina_ed: str) -> dict:
-    """
-    Função mantida por flexibilidade, mas as EDs foram removidas do DB para seguir
-    a regra de 8 matérias NP/PIM e 1 PIM. 
-    Se a regra mudar novamente, esta função seria ativada para 'Tipo_Avaliacao' = 'ED'.
-    No momento, ela retornará erro, pois 'ED' não existe mais como disciplina separada.
-    """
-    return {"status": "error", "message": f"A disciplina '{nome_disciplina_ed}' não é mais reconhecida como Estudo Dirigido (ED) separado para notas. Favor usar a ferramenta de lançamento de notas para disciplinas com NP1/NP2/PIM."}
-    
+    """Marca uma disciplina ED como 'Feito' (usando Media_Final = 1.0 como flag)."""
+    ra_aluno = ra_aluno.strip().upper()
+    nome_disciplina_ed = nome_disciplina_ed.strip()
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 1. Obter IDs e checar se é ED
+        sql_info = """
+        SELECT A.id_aluno, D.Tipo_Avaliacao 
+        FROM Alunos A
+        JOIN Historico_Academico H ON A.id_aluno = H.fk_id_aluno
+        JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
+        WHERE A.RA = ? AND D.Nome_Disciplina = ?;
+        """
+        cursor.execute(sql_info, (ra_aluno, nome_disciplina_ed))
+        info = cursor.fetchone()
+
+        if not info:
+            conn.close()
+            return {"status": "error", "message": f"Aluno/Disciplina '{ra_aluno}'/'{nome_disciplina_ed}' não encontrados."}
+        
+        if info['Tipo_Avaliacao'] != 'ED':
+            conn.close()
+            return {"status": "error", "message": f"'{nome_disciplina_ed}' não é uma disciplina ED. Só é possível marcar status de conclusão para ED."}
+
+        # 2. Atualizar status (Media_Final = 1.0 como flag de conclusão)
+        sql_update_ed = """
+        UPDATE Historico_Academico 
+        SET Media_Final = 1.0
+        WHERE fk_id_aluno = ? 
+        AND fk_id_disciplina = (SELECT id_disciplina FROM Disciplinas WHERE Nome_Disciplina = ?);
+        """
+        cursor.execute(sql_update_ed, (info['id_aluno'], nome_disciplina_ed))
+        conn.commit()
+        conn.close()
+
+        return {"status": "success", "message": f"Estudo Disciplinar '{nome_disciplina_ed}' marcado como concluído para o aluno {ra_aluno}."}
+
+    except sqlite3.Error as e:
+        conn.close()
+        return {"status": "error", "message": f"Erro ao marcar ED como concluído: {e}"}
+
 def lancar_faltas_api(ra_aluno: str, nome_disciplina: str, faltas: int) -> dict:
     """Lança o número de faltas para uma disciplina."""
     ra_aluno = ra_aluno.strip().upper()
@@ -428,7 +400,7 @@ def lancar_faltas_api(ra_aluno: str, nome_disciplina: str, faltas: int) -> dict:
     cursor = conn.cursor()
 
     try:
-        # 1. Obter IDs 
+        # 1. Obter IDs e checar se pode ter falta (o banco permite, mas o aviso é importante)
         sql_info = """
         SELECT A.id_aluno, D.Tipo_Avaliacao 
         FROM Alunos A
@@ -455,8 +427,8 @@ def lancar_faltas_api(ra_aluno: str, nome_disciplina: str, faltas: int) -> dict:
         conn.close()
         
         aviso = ""
-        if info['Tipo_Avaliacao'] in ['PIM']:
-             aviso = f" (AVISO: '{nome_disciplina}' é PIM e não costuma ter controle de faltas, mas o registro foi salvo.)"
+        if info['Tipo_Avaliacao'] in ['AVAS', 'PIM', 'ED']:
+             aviso = f" (AVISO: '{nome_disciplina}' é {info['Tipo_Avaliacao']} e não costuma ter controle de faltas, mas o registro foi salvo.)"
 
         return {"status": "success", "message": f"Lançadas {faltas} faltas para '{nome_disciplina}' ({ra_aluno}).{aviso}"}
 
@@ -468,7 +440,7 @@ def lancar_faltas_api(ra_aluno: str, nome_disciplina: str, faltas: int) -> dict:
 # --- OPERAÇÃO DE LEITURA (Consulta) ---
 
 def verificar_dados_curso_api(ra_aluno: str) -> dict:
-    """OPERAÇÃO 1: Busca o histórico ajustado para as regras de PIM/NP1/NP2."""
+    """OPERAÇÃO 1: Busca o histórico ajustado para as regras de PIM/ED/AVAS."""
     ra_aluno = ra_aluno.strip().upper()
 
     comando_sql_join = """
@@ -501,17 +473,9 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
 
         historico = []
         id_aluno = registros[0]['id_aluno']
-        
-        # Pré-busca de todas as notas PIM para evitar múltiplas queries
-        pim_notas = {}
-        semestres = sorted(list(set(reg['Semestre'] for reg in registros)))
-        for sem in semestres:
-            pim_notas[sem] = _get_pim_nota(conn, id_aluno, sem)
-
 
         for reg in registros:
             tipo = reg['Tipo_Avaliacao'].upper()
-            semestre = reg['Semestre']
             
             np1_val = formatar_valor(reg['NP1'])
             np2_val = formatar_valor(reg['NP2'])
@@ -520,25 +484,35 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
 
             disciplina_info = {
                 "disciplina": reg['Nome_Disciplina'],
-                "semestre": semestre,
-                "tipo_avaliacao": "Matéria com NP1/NP2/PIM" if tipo == 'NORMAL' else tipo,
+                "semestre": reg['Semestre'],
+                "tipo_avaliacao": tipo,
             }
 
             if tipo == 'PIM':
                 # PIM: Somente uma nota (Media_Final).
-                pim_nota = pim_notas.get(semestre)
                 disciplina_info.update({
-                    "nota_pim": formatar_valor(pim_nota) if pim_nota is not None else "Indefinida",
+                    "nota_pim": media_val if media_val is not None else "Indefinida",
                     "np1": "N/A",
                     "np2": "N/A",
                     "media_final": "N/A", 
                     "faltas": "N/A",
-                    "observacao": "Nota de trabalho (20% do cálculo da Média Final de outras matérias)."
+                    "observacao": "Nota de trabalho que compõe a média de todas as matérias AVAS do semestre."
                 })
-            
-            elif tipo == 'NORMAL': # Matérias com NP1/NP2/PIM
+            elif tipo == 'ED':
+                # ED: Apenas status de conclusão (Media_Final != NULL -> Feito).
+                status_ed = "Feito" if reg['Media_Final'] is not None else "Não Feito"
                 
-                pim_nota_semestre = pim_notas.get(semestre)
+                disciplina_info.update({
+                    "status_conclusao": status_ed,
+                    "np1": "N/A",
+                    "np2": "N/A",
+                    "media_final": "N/A",
+                    "faltas": "N/A",
+                    "observacao": "Obrigatória, sem nota. Status: Feito/Não Feito."
+                })
+            elif tipo == 'AVAS':
+                
+                pim_nota_semestre = _get_pim_nota(conn, id_aluno, reg['Semestre'])
                 media_display = media_val
                 
                 # Se a Media_Final não estiver salva, tenta calcular dinamicamente
@@ -555,14 +529,14 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
                     "nota_pim_usada": formatar_valor(pim_nota_semestre) if pim_nota_semestre is not None else "Indefinida",
                     "media_final": media_display,
                     "faltas": faltas_exibicao,
-                    "observacao": "Média calculada: 40% NP1, 40% NP2, 20% PIM."
+                    "observacao": "Média calculada com PIM. Matéria Online (sem controle de faltas obrigatório)."
                 })
-            else: # Para qualquer outro tipo que possa ser adicionado (ex. ED, que foi excluído)
-                # Mantido para robustez, mas deve ser inalcançável com o DB atual
+            else: # Outros tipos
                 disciplina_info.update({
-                    "np1": "N/A", "np2": "N/A", "media_final": media_val if media_val is not None else "N/A",
-                    "faltas": faltas_val if faltas_val is not None else "N/A",
-                    "observacao": f"Tipo de avaliação: {tipo}"
+                    "np1": np1_val if np1_val is not None else "Indefinida",
+                    "np2": np2_val if np2_val is not None else "Indefinida",
+                    "media_final": media_val if media_val is not None else "Indefinida",
+                    "faltas": faltas_val if faltas_val is not None else "Indefinidas"
                 })
                 
             historico.append(disciplina_info)
@@ -573,7 +547,7 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
             "aluno": registros[0]['Nome_Completo'],
             "ra": ra_aluno,
             "historico": historico,
-            "nota_pim_info": "Disciplinas com NP1/NP2: Média Final = (NP1*40% + NP2*40% + PIM*20%)."
+            "nota_pim_info": "AVAS: Média Final = (NP1*4 + NP2*4 + PIM*2) / 10."
         }
 
     except sqlite3.Error as e:
@@ -593,7 +567,7 @@ def buscar_material_estudo_api(topico: str) -> dict:
         "3. Um exercício prático (com resposta).\n"
         "4. **Busque na web** e adicione **2 sugestões de links relevantes (vídeo-aulas ou artigos) sobre o tópico, formatados como links Markdown [Título](URL)**. "
         "Responda em português. Mantenha o tom acadêmico-informal."
-        "Encaminhe todo o material gerado sob as especificações acima para o usuário para que ele possa visualizar tudo e estudar."
+        "Encaminhe todo o material gerado sob as especificações acima para o usuário para que ele posso vizualizar tudo e estudar."
     )
 
     try:
@@ -640,11 +614,9 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
         # PROFESSOR: Acesso total (Leitura e Escrita)
         ferramentas_permitidas = list(TOOLS.values()) 
         instrucoes_perfil = (
-            "Você é um assistente acadêmico para um **Professor**. Sua persona é o **Joker** (Persona 5). Responda com um ton sarcástico, mas sempre respeitoso e informativo. Use emojis e linguagem que remetam ao estilo dele. "
-            "Suas principais tarefas são: 1. Ajudar o professor a visualizar dados acadêmicos. 2. Gerar material de estudo. 3. **Lançar notas (NP1, NP2, PIM) e faltas.** "
-            "O sistema calcula a média de todas as matérias automaticamente após ter NP1, NP2 e PIM (Fórmula: 40% NP1 + 40% NP2 + 20% PIM). Ao lançar notas, garanta que todos os 4 parâmetros (RA, Disciplina, NP/PIM e Nota) estejam claros e use a função apropriada. Informe a ele que o lançamento do PIM recalcula automaticamente todas as notas do semestre."
-            "O sistema foi configurado com 8 disciplinas que usam NP1/NP2/PIM, e a disciplina PIM que dá a nota para as outras 8. Não existe mais disciplina 'ED' separada no histórico. Se for pedido para lançar ED, use a resposta padrão para a ferramenta 'marcar_ed_concluido'."
-            "Ao exibir dados do histórico, formate a resposta em Markdown (listas ou tabelas) para que a visualização seja clara e fácil de ler. Não use aspas ou blocos de código para formatar a resposta."
+            "Você é um assistente acadêmico para um **Professor**. Responda com um tom sarcástico, mas sempre respeitoso e informativo, usando a personalidade do 'Joker' (Persona 5). "
+            "Suas principais tarefas são: 1. Ajudar o professor a visualizar dados acadêmicos. 2. Gerar material de estudo. 3. **Lançar notas (NP1, NP2, PIM) e faltas e marcar ED como concluído no sistema.** "
+            "Ao lançar notas, garanta que todos os 4 parâmetros (RA, Disciplina, NP/PIM e Nota) estejam claros e use a função apropriada. Informe a ele que o sistema calcula a média AVAS automaticamente após ter NP1, NP2 e PIM."
         )
     else: # Aluno
         # ALUNO: Acesso restrito (Somente Leitura de Histórico e Geração de Material)
@@ -653,23 +625,22 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
             TOOLS['gerar_material_estudo']
         ]
         instrucoes_perfil = (
-            "Você é um assistente acadêmico para um **Aluno**. Sua persona é o **Joker** (Persona 5). Responda com um tom sarcástico, mas sempre informativo, usando emojis e linguagem que remetam ao estilo dele. "
-            "Suas principais tarefas são: 1. Ajudar o aluno a verificar o próprio histórico. 2. Gerar material de estudo. **(Você NÃO pode lançar ou alterar notas ou faltas.)**"
-            "Ao exibir dados do histórico, formate a resposta em Markdown (listas ou tabelas) para que a visualização seja clara e fácil de ler. Não use aspas ou blocos de código para formatar a resposta."
+            "Você é um assistente acadêmico para um **Aluno**. Responda com um tom sarcástico, mas sempre informativo, usando a personalidade do 'Joker'(Persona 5). "
+            "Suas principais tarefas são: 1. Ajudar o aluno a verificar o próprio histórico. 2. Gerar material de estudo. **(Você NÃO pode lançar ou alterar notas.)**"
         )
         
     prompt_ferramenta = (
         f"{instrucoes_perfil}\n\n"
         "O usuário enviou a seguinte mensagem: '{}'. \n\n"
         "**Instruções para Ferramentas:**\n"
-        "1. Se o usuário pedir especificamente por um RA, notas ou histórico, use 'verificar_historico_academico'.\n"
-        "2. Se o usuário pedir um material de estudo/resumo/explicação sobre um tópico, use 'gerar_material_estudo'.\n"
+        "1. Se o usuário pedir especificamente por um RA, notas ou histórico, use 'verificar_dados_curso_api'.\n"
+        "2. Se o usuário pedir um material de estudo/resumo/explicação sobre um tópico, use 'buscar_material_estudo_api'.\n"
         "3. Se o professor pedir para lançar NP1/NP2, use 'lancar_nota_np'.\n"
         "4. Se o professor pedir para lançar PIM, use 'lancar_nota_pim'.\n"
-        "5. Se o professor pedir para marcar ED como concluído, use 'marcar_ed_concluido' (recebe a resposta padrão da função).\n"
+        "5. Se o professor pedir para marcar ED como concluído, use 'marcar_ed_concluido'.\n"
         "6. Se o professor pedir para lançar faltas, use 'lancar_faltas'.\n"
         "7. Para **qualquer outra pergunta abrangente** ou se a função for desnecessária/impossível, **RESPONDA DIRETAMENTE**.\n"
-        "Em caso de dados faltantes (ex: RA, nota), peça-os. \n\n"
+        "Em caso de dados faltantes (ex: RA), peça-os. \n\n"
     ).format(mensagem_usuario)
 
     # 2. Envia a mensagem com as ferramentas FILTRADAS para o Gemini
@@ -694,16 +665,11 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
             print(f"🤖 Chamando função {func_name} com args: {func_args}")
 
             # 4. Executa a função localmente
-            try:
-                function_response_data = TOOLS[func_name](**func_args)
-            except TypeError as e:
-                return f"Joker: Parece que você esqueceu alguns detalhes, Mestre. Verifique se passou todos os parâmetros corretos para {func_name}. Detalhe técnico: {e}"
+            function_response_data = TOOLS[func_name](**func_args)
 
             # Se a busca/lançamento SQL falhar, retorna o erro diretamente.
             if function_response_data.get('status') == 'error':
-                # Permite que a resposta padrão da 'marcar_ed_concluido' seja enviada sem processamento extra
-                if func_name == 'marcar_ed_concluido':
-                    return f"Joker: Ops! 🃏 {function_response_data['message']}"
+                return f"Joker: Oops! {function_response_data['message']}"
 
             # 5. Envia o resultado da execução de volta ao Gemini
             segundo_prompt = [
@@ -727,12 +693,6 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
 
 
 # --- ROTAS DE FLASK (Login e Router) ---
-
-@app.route('/', methods=['GET'])
-def home():
-    """NOVA ROTA: Rota de teste de saúde (health check) para o Render."""
-    return "✅ Joker: O servidor Flask está acordado! Rotas principais: /login e /chat (POST)."
-
 
 @app.route('/login', methods=['POST'])
 def handle_login():
@@ -759,75 +719,123 @@ def handle_login():
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Lógica de autenticação
-        if tipo_usuario == 'ALUNO':
-            sql = "SELECT RA, Nome_Completo, Tipo_Usuario, Senha FROM Alunos WHERE RA = ? AND Tipo_Usuario = 'Aluno'"
-            params = (credencial,)
-        elif tipo_usuario == 'PROFESSOR':
-            if not codigo_seguranca:
-                 conn.close()
-                 return jsonify({"status": "error", "message": "Para Professores, o Código de Segurança é obrigatório."}), 400
-                 
-            sql = "SELECT RA, Nome_Completo, Tipo_Usuario, Senha, Codigo_Seguranca FROM Alunos WHERE RA = ? AND Tipo_Usuario = 'Professor'"
-            params = (credencial,)
-        else:
-            conn.close()
-            return jsonify({"status": "error", "message": "Tipo de usuário inválido. Use 'Aluno' ou 'Professor'."}), 400
-            
-        cursor.execute(sql, params)
-        user_data = cursor.fetchone()
-        conn.close()
-        
-        if not user_data:
-            return jsonify({"status": "error", "message": f"Login falhou. Credencial '{credencial}' não encontrada como {tipo_usuario.title()}."}), 401
-            
-        # 1. Checa a Senha
-        if user_data['Senha'] != senha:
-            return jsonify({"status": "error", "message": "Login falhou. Senha incorreta."}), 401
-            
-        # 2. Checa o Código de Segurança (apenas para Professor)
-        if tipo_usuario == 'PROFESSOR' and user_data['Codigo_Seguranca'] != codigo_seguranca:
-             return jsonify({"status": "error", "message": "Login falhou. Código de Segurança incorreto."}), 401
+        aluno_info = None
+        senha_valida = False # Define como falso por padrão
 
-        # Sucesso!
-        return jsonify({
-            "status": "success", 
-            "message": f"Login bem-sucedido. Bem-vindo(a), {user_data['Nome_Completo']}!",
-            "ra": user_data['RA'],
-            "nome": user_data['Nome_Completo'],
-            "tipo_usuario": user_data['Tipo_Usuario']
-        }), 200
+        if tipo_usuario == 'ALUNO':
+            # 1. Lógica para Aluno: verifica RA, Tipo e Senha
+            comando_sql_aluno = "SELECT Nome_Completo, Tipo_Usuario, Senha FROM Alunos WHERE RA = ? AND Tipo_Usuario = 'Aluno'"
+            cursor.execute(comando_sql_aluno, (credencial,))
+            aluno_info = cursor.fetchone()
+            
+            # Verifica se encontrou o aluno E se a senha confere
+            if aluno_info and aluno_info['Senha'] == senha:
+                senha_valida = True
+            
+        elif tipo_usuario == 'PROFESSOR':
+            # 2. Lógica para Professor: verifica 3 campos
+            if not codigo_seguranca or len(codigo_seguranca) != 6:
+                 conn.close()
+                 return jsonify({"status": "error", "message": "Código de Segurança inválido. Deve ter 6 dígitos."}), 401
+
+            comando_sql_prof = """
+            SELECT Nome_Completo, Tipo_Usuario, Codigo_Seguranca, Senha 
+            FROM Alunos 
+            WHERE RA = ? AND Tipo_Usuario = 'Professor'
+            """
+            cursor.execute(comando_sql_prof, (credencial,))
+            prof_data = cursor.fetchone()
+            
+            if prof_data:
+                # 3. Verifica o Código de Segurança E a Senha do Professor
+                if prof_data['Codigo_Seguranca'] == codigo_seguranca and prof_data['Senha'] == senha:
+                    aluno_info = prof_data
+                    senha_valida = True
+                #else: senha_valida permanece False
+            #else: aluno_info permanece None e senha_valida permanece False
+
+        else:
+             conn.close()
+             return jsonify({"status": "error", "message": "Tipo de usuário inválido."}), 400
+
+        conn.close()
+
+        if aluno_info and senha_valida:
+            # Login bem-sucedido (simulação)
+            return jsonify({
+                "status": "success", 
+                "message": "Login bem-sucedido.", 
+                "user": {
+                    "ra": credencial, 
+                    "nome": aluno_info['Nome_Completo'],
+                    "tipo_usuario": aluno_info['Tipo_Usuario'].lower() 
+                }
+            }), 200
+        else:
+            # Falha na autenticação
+            return jsonify({"status": "error", "message": "Credenciais (RA/Funcional, Senha ou Código) inválidas."}), 401
 
     except Exception as e:
-        # Erro geral (pode ser problema de JSON, etc.)
-        return jsonify({"status": "error", "message": f"Erro inesperado no servidor: {e}"}), 500
+        print(f"❌ Erro na rota /login: {e}")
+        return jsonify({"status": "error", "message": "Erro interno do servidor."}), 500
 
-@app.route('/chat', methods=['POST'])
-def handle_chat():
-    """Rota principal para o chat que usa o router do Gemini."""
+
+@app.route('/')
+def serve_index():
+    """Serva o arquivo joker_bot.html principal, que está na raiz."""
+    return send_file('joker_bot.html')
+
+@app.route('/web_router', methods=['POST'])
+def handle_web_message():
+    """Endpoint que recebe a mensagem do usuário do Front-end Web."""
     try:
         data = request.get_json()
-        mensagem = data.get('message')
-        tipo_usuario = data.get('tipo_usuario')
-        
-        if not mensagem or not tipo_usuario:
-            return jsonify({"status": "error", "message": "Campos 'message' e 'tipo_usuario' são obrigatórios."}), 400
-            
-        # Roteia e executa a lógica principal com o Gemini
-        response_text = rotear_e_executar_mensagem(mensagem, tipo_usuario)
-        
+        message_text = data.get('message')
+        tipo_usuario = data.get('tipo_usuario', 'aluno') 
+
+        if not message_text:
+            return jsonify({"status": "error", "message": "Mensagem de texto não fornecida."}), 400
+
+        print(f"🌐 Mensagem recebida de {tipo_usuario.upper()}: {message_text}")
+
+        resposta_final_texto = rotear_e_executar_mensagem(message_text, tipo_usuario)
+
         return jsonify({
             "status": "success",
-            "resposta": response_text
+            "message": resposta_final_texto
         }), 200
 
     except Exception as e:
-        return jsonify({"status": "error", "message": f"Erro na comunicação do chat: {e}"}), 500
+        print(f"❌ Erro no Web Router: {e}")
+        return jsonify({"status": "error", "message": f"Erro interno do servidor: {e}"}), 500
 
+
+@app.route('/whatsapp_webhook', methods=['POST'])
+def handle_whatsapp_message():
+    """Endpoint que recebe a mensagem do usuário do WhatsApp via Webhook da Twilio."""
+
+    message_text = request.form.get('Body')
+    TIPO_USUARIO_WHATSAPP = 'aluno' 
+
+    if not message_text:
+        return str(MessagingResponse()), 200
+
+    print(f"💬 Mensagem recebida da Twilio: {message_text}")
+
+    resposta_final_texto = rotear_e_executar_mensagem(message_text, TIPO_USUARIO_WHATSAPP)
+
+    resp = MessagingResponse()
+    resp.message(resposta_final_texto)
+    return str(resp)
+
+
+# --- EXECUÇÃO PRINCIPAL ---
+init_db()
 
 if __name__ == '__main__':
-    init_db()
-    # No Render, o servidor será executado pelo Gunicorn, mas o init_db() é essencial.
-    # Para teste local:
-    # app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True)
+
+
+
+
+
