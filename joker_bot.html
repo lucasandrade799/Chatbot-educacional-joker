@@ -30,7 +30,7 @@
             
             /* Fundo com a imagem da cidade */
             background-color: var(--p5-black); 
-            /* ALTERADO: Caminho da imagem para a pasta static */
+            /* Caminho da imagem para a pasta static */
             background-image: url('static/background.jpg');
             background-size: cover;
             background-position: center;
@@ -88,7 +88,7 @@
             padding: 10px;
             overflow-y: auto;
             border-bottom: 5px solid var(--p5-white);
-            display: flex;
+            display: none; /* Escondido inicialmente */
             flex-direction: column;
         }
         
@@ -100,7 +100,7 @@
             border: 2px solid var(--p5-white); 
             margin-right: 10px; 
             flex-shrink: 0; 
-            /* ALTERADO: Caminho da imagem para a pasta static */
+            /* Caminho da imagem para a pasta static */
             background-image: url('static/joker_icon.png');
             background-size: cover; 
             filter: grayscale(100%); 
@@ -115,6 +115,7 @@
             background-color: var(--p5-red); 
             border-top: 5px solid var(--p5-white);
             display: none; /* Escondido inicialmente */
+            justify-content: space-between;
         }
 
         .chat-input input[type="text"] { flex-grow: 1; padding: 10px; border: 3px solid var(--p5-black); font-size: 1em; background-color: var(--p5-white); color: var(--p5-black); font-family: var(--p5-font); outline: none; }
@@ -163,7 +164,7 @@
         }
 
         #login-form select {
-             width: 100%; /* Ajuste para preencher melhor o form */
+            width: 100%; /* Ajuste para preencher melhor o form */
         }
         
         #login-form button {
@@ -345,6 +346,7 @@
                     
                     appendMessage('bot', welcomeMsg);
                     headerTitle.textContent = `${loggedUser.nome} - ${loggedUser.tipo_usuario.toUpperCase()}`;
+                    userInput.focus(); // Foca no campo de input do chat
 
                 } else {
                     loginStatus.textContent = data.message || 'Erro de login. Tente novamente.';
@@ -365,7 +367,7 @@
 
             const formattedText = text
                 .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1');
 
             if (sender === 'bot') {
                 messageDiv.innerHTML = `
@@ -408,7 +410,8 @@
             showLoading();
             
             try {
-                const response = await fetch(`${API_BASE_URL}/web_router`, {
+                // CORRIGIDO: Rota alterada para /router
+                const response = await fetch(`${API_BASE_URL}/router`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -416,10 +419,12 @@
 
                 const data = await response.json();
                 
-                if (response.status === 200 && data.status === 'success') {
+                // CORRIGIDO: O /router sempre retorna a resposta do Joker na chave 'message' com status 200
+                if (response.status === 200) { 
                     return data.message;
                 } else {
-                    return `Joker: Ops! ${data.message || 'Ocorreu um erro desconhecido no servidor.'}`;
+                    // Trata erros de rota /router (que retornam "error" no JSON)
+                    return `Joker: Ops! ${data.error || 'Ocorreu um erro desconhecido no servidor.'}`;
                 }
 
             } catch (error) {
@@ -450,8 +455,14 @@
                 handleSend();
             }
         });
+        
+        // Garante que a tela inicial seja a de login
+        document.addEventListener('DOMContentLoaded', () => {
+            userTypeSelect.dispatchEvent(new Event('change'));
+            chatDisplay.style.display = 'none';
+            document.querySelector('.chat-input').style.display = 'none';
+        });
 
     </script>
 </body>
 </html>
-
