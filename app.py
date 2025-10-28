@@ -99,7 +99,7 @@ CORS(app)
 client = None
 
 if API_KEY_GEMINI:
-    try: # CORRIGIDO: Recuo com espaços normais
+    try: 
         client = genai.Client(api_key=API_KEY_GEMINI)
         print("✅ Cliente Gemini inicializado com sucesso.")
     except Exception as e:
@@ -640,7 +640,7 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
         # PROFESSOR: Acesso total (Leitura e Escrita)
         ferramentas_permitidas = list(TOOLS.values()) 
         instrucoes_perfil = (
-            "Você é um assistente acadêmico para um **Professor**. Sua persona é o **Joker** (Persona 5). Responda com um tom sarcástico, mas sempre respeitoso e informativo. Use emojis e linguagem que remetam ao estilo dele. "
+            "Você é um assistente acadêmico para um **Professor**. Sua persona é o **Joker** (Persona 5). Responda com um ton sarcástico, mas sempre respeitoso e informativo. Use emojis e linguagem que remetam ao estilo dele. "
             "Suas principais tarefas são: 1. Ajudar o professor a visualizar dados acadêmicos. 2. Gerar material de estudo. 3. **Lançar notas (NP1, NP2, PIM) e faltas.** "
             "O sistema calcula a média de todas as matérias automaticamente após ter NP1, NP2 e PIM (Fórmula: 40% NP1 + 40% NP2 + 20% PIM). Ao lançar notas, garanta que todos os 4 parâmetros (RA, Disciplina, NP/PIM e Nota) estejam claros e use a função apropriada. Informe a ele que o lançamento do PIM recalcula automaticamente todas as notas do semestre."
             "O sistema foi configurado com 8 disciplinas que usam NP1/NP2/PIM, e a disciplina PIM que dá a nota para as outras 8. Não existe mais disciplina 'ED' separada no histórico. Se for pedido para lançar ED, use a resposta padrão para a ferramenta 'marcar_ed_concluido'."
@@ -727,6 +727,12 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
 
 
 # --- ROTAS DE FLASK (Login e Router) ---
+
+@app.route('/', methods=['GET'])
+def home():
+    """NOVA ROTA: Rota de teste de saúde (health check) para o Render."""
+    return "✅ Joker: O servidor Flask está acordado! Rotas principais: /login e /chat (POST)."
+
 
 @app.route('/login', methods=['POST'])
 def handle_login():
@@ -822,7 +828,6 @@ def handle_chat():
 
 if __name__ == '__main__':
     init_db()
-    # Em ambientes de produção (Render, etc.), o Gunicorn deve chamar o app,
-    # mas para teste local:
-    # app.run(debug=True) # Use com debug se estiver em ambiente de dev.
-
+    # No Render, o servidor será executado pelo Gunicorn, mas o init_db() é essencial.
+    # Para teste local:
+    # app.run(debug=True, host='0.0.0.0', port=5000)
