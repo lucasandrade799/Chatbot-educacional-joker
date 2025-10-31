@@ -367,7 +367,7 @@
 
             const formattedText = text
                 .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1');
 
             if (sender === 'bot') {
                 messageDiv.innerHTML = `
@@ -410,8 +410,8 @@
             showLoading();
             
             try {
-                // CORRIGIDO: Rota alterada para /router
-                const response = await fetch(`${API_BASE_URL}/router`, {
+                // CORRIGIDO: Rota alterada para /web_router (para corresponder ao app.py)
+                const response = await fetch(`${API_BASE_URL}/web_router`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -419,11 +419,11 @@
 
                 const data = await response.json();
                 
-                // CORRIGIDO: O /router sempre retorna a resposta do Joker na chave 'message' com status 200
+                // CORRIGIDO: O /web_router sempre retorna a resposta do Joker na chave 'message' com status 200
                 if (response.status === 200) { 
                     return data.message;
                 } else {
-                    // Trata erros de rota /router (que retornam "error" no JSON)
+                    // Trata erros de rota /web_router (que retornam "error" no JSON)
                     return `Joker: Ops! ${data.error || 'Ocorreu um erro desconhecido no servidor.'}`;
                 }
 
