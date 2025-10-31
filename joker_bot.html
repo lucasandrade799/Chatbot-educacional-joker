@@ -367,7 +367,7 @@
 
             const formattedText = text
                 .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1');
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
             if (sender === 'bot') {
                 messageDiv.innerHTML = `
@@ -466,3 +466,4 @@
     </script>
 </body>
 </html>
+
