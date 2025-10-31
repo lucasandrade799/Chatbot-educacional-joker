@@ -286,7 +286,7 @@ def lancar_nota_np_api(ra_aluno: str, nome_disciplina: str, np_qual: str, nota: 
         conn.close()
 
         status_media = f"Média Final calculada e salva: {media:.2f}" if media is not None else "Média Final pendente (PIM ou outra NP faltando)."
-        return {"status": "success", "message": f"Nota {np_qual} (R${nota:.2f}$) lançada para {nome_disciplina} ({ra_aluno}). {status_media}"}
+        return {"status": "success", "message": f"Nota {np_qual} (R${nota:.2f}) lançada para {nome_disciplina} ({ra_aluno}). {status_media}"}
 
     except sqlite3.Error as e:
         conn.close()
@@ -834,6 +834,7 @@ init_db()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
