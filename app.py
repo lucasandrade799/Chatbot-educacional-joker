@@ -53,9 +53,9 @@ INSERT OR IGNORE INTO Disciplinas (Nome_Disciplina, Semestre, Tipo_Avaliacao) VA
 ('Fundamentos de Sistemas', 1, 'AVAS'), 
 ('Matemática Discreta', 1, 'AVAS'), 
 ('Arquitetura de Computadores', 1, 'ED'), 
-('Redes de Computadores', 1, 'ED'),       
-('Comunicação Empresarial', 1, 'ED'),     
-('Ética e Cidadania', 1, 'ED'),           
+('Redes de Computadores', 1, 'ED'),      
+('Comunicação Empresarial', 1, 'ED'),    
+('Ética e Cidadania', 1, 'ED'),          
 ('PIM I', 1, 'PIM'), 
 
 -- Semestre 2
@@ -88,7 +88,7 @@ SELECT
     CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL ELSE NULL END AS NP1, 
     CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL ELSE NULL END AS NP2, 
     NULL AS Media_Final, 
-    NULL AS Faltas       
+    NULL AS Faltas        
 FROM Alunos A
 JOIN Disciplinas D;
 """
@@ -428,7 +428,7 @@ def lancar_faltas_api(ra_aluno: str, nome_disciplina: str, faltas: int) -> dict:
         
         aviso = ""
         if info['Tipo_Avaliacao'] in ['AVAS', 'PIM', 'ED']:
-             aviso = f" (AVISO: '{nome_disciplina}' é {info['Tipo_Avaliacao']} e não costuma ter controle de faltas, mas o registro foi salvo.)"
+              aviso = f" (AVISO: '{nome_disciplina}' é {info['Tipo_Avaliacao']} e não costuma ter controle de faltas, mas o registro foi salvo.)"
 
         return {"status": "success", "message": f"Lançadas {faltas} faltas para '{nome_disciplina}' ({ra_aluno}).{aviso}"}
 
@@ -440,7 +440,8 @@ def lancar_faltas_api(ra_aluno: str, nome_disciplina: str, faltas: int) -> dict:
 # --- OPERAÇÃO DE LEITURA (Consulta) ---
 
 def verificar_dados_curso_api(ra_aluno: str) -> dict:
-    """OPERAÇÃO 1: Busca o histórico ajustado para as regras de PIM/ED/AVAS."""
+    """OPERAÇÃO 1: Busca o histórico ajustado para as regras de PIM/ED/AVAS.
+       ATUALIZADO: Garante que NP1, NP2 e Media_Final sejam exibidos para AVAS."""
     ra_aluno = ra_aluno.strip().upper()
 
     comando_sql_join = """
@@ -467,7 +468,7 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
             info_user = cursor.fetchone()
             
             if info_user:
-                 return {"status": "error", "message": f"O usuário '{info_user['Nome_Completo']}' ({ra_aluno}) não possui histórico acadêmico registrado."}
+                return {"status": "error", "message": f"O usuário '{info_user['Nome_Completo']}' ({ra_aluno}) não possui histórico acadêmico registrado."}
             
             return {"status": "error", "message": f"A credencial '{ra_aluno}' não foi encontrada."}
 
@@ -511,6 +512,7 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
                     "observacao": "Obrigatória, sem nota. Status: Feito/Não Feito."
                 })
             elif tipo == 'AVAS':
+                # AVAS: NP1, NP2, PIM (do semestre) e Média Final calculada.
                 
                 pim_nota_semestre = _get_pim_nota(conn, id_aluno, reg['Semestre'])
                 media_display = media_val
@@ -531,14 +533,15 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
                     "faltas": faltas_exibicao,
                     "observacao": "Média calculada com PIM. Matéria Online (sem controle de faltas obrigatório)."
                 })
-            else: # Outros tipos
-                disciplina_info.update({
-                    "np1": np1_val if np1_val is not None else "Indefinida",
-                    "np2": np2_val if np2_val is not None else "Indefinida",
-                    "media_final": media_val if media_val is not None else "Indefinida",
-                    "faltas": faltas_val if faltas_val is not None else "Indefinidas"
-                })
-                
+            else: # Outros tipos (Caso haja erro no BD, usa valores existentes)
+                 disciplina_info.update({
+                     "np1": np1_val if np1_val is not None else "Indefinida",
+                     "np2": np2_val if np2_val is not None else "Indefinida",
+                     "media_final": media_val if media_val is not None else "Indefinida",
+                     "faltas": faltas_val if faltas_val is not None else "Indefinidas",
+                     "observacao": "Tipo de avaliação não reconhecido: " + tipo
+                 })
+                 
             historico.append(disciplina_info)
 
         conn.close()
@@ -614,7 +617,7 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
         # PROFESSOR: Acesso total (Leitura e Escrita)
         ferramentas_permitidas = list(TOOLS.values()) 
         instrucoes_perfil = (
-            "Você é um assistente acadêmico para um **Professor**. Responda com um tom sarcástico, mas sempre respeitoso e informativo, usando a personalidade do 'Joker' (Persona 5). "
+            "Você é um assistente acadêmico para um **Professor**. Responda com um tom sarcástico, mas sempre respeitoso e informativo, usando a personalidade do 'Joker' de Persona 5. Jamais confunda com nenhum Coringa da DC Comics"
             "Suas principais tarefas são: 1. Ajudar o professor a visualizar dados acadêmicos. 2. Gerar material de estudo. 3. **Lançar notas (NP1, NP2, PIM) e faltas e marcar ED como concluído no sistema.** "
             "Ao lançar notas, garanta que todos os 4 parâmetros (RA, Disciplina, NP/PIM e Nota) estejam claros e use a função apropriada. Informe a ele que o sistema calcula a média AVAS automaticamente após ter NP1, NP2 e PIM."
         )
@@ -625,7 +628,7 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
             TOOLS['gerar_material_estudo']
         ]
         instrucoes_perfil = (
-            "Você é um assistente acadêmico para um **Aluno**. Responda com um tom sarcástico, mas sempre informativo, usando a personalidade do 'Joker'(Persona 5). "
+            "Você é um assistente acadêmico para um **Aluno**. Responda com um tom sarcástico, mas sempre informativo, usando a personalidade do 'Joker' de Persona 5. Jamais confunda com nenhum Coringa da DC Comics"
             "Suas principais tarefas são: 1. Ajudar o aluno a verificar o próprio histórico. 2. Gerar material de estudo. **(Você NÃO pode lançar ou alterar notas.)**"
         )
         
@@ -735,8 +738,8 @@ def handle_login():
         elif tipo_usuario == 'PROFESSOR':
             # 2. Lógica para Professor: verifica 3 campos
             if not codigo_seguranca or len(codigo_seguranca) != 6:
-                 conn.close()
-                 return jsonify({"status": "error", "message": "Código de Segurança inválido. Deve ter 6 dígitos."}), 401
+                conn.close()
+                return jsonify({"status": "error", "message": "Código de Segurança inválido. Deve ter 6 dígitos."}), 401
 
             comando_sql_prof = """
             SELECT Nome_Completo, Tipo_Usuario, Codigo_Seguranca, Senha 
@@ -755,8 +758,8 @@ def handle_login():
             #else: aluno_info permanece None e senha_valida permanece False
 
         else:
-             conn.close()
-             return jsonify({"status": "error", "message": "Tipo de usuário inválido."}), 400
+            conn.close()
+            return jsonify({"status": "error", "message": "Tipo de usuário inválido."}), 400
 
         conn.close()
 
@@ -777,20 +780,16 @@ def handle_login():
 
     except Exception as e:
         print(f"❌ Erro na rota /login: {e}")
-        return jsonify({"status": "error", "message": "Erro interno do servidor."}), 500
+        return jsonify({"status": "error", "message": f"Erro interno do servidor: {e}"}), 500
 
 
-@app.route('/')
-def serve_index():
-    """Serva o arquivo joker_bot.html principal, que está na raiz."""
-    return send_file('joker_bot.html')
-
-@app.route('/web_router', methods=['POST'])
-def handle_web_message():
+@app.route('/router', methods=['POST'])
+def web_router():
     """Endpoint que recebe a mensagem do usuário do Front-end Web."""
     try:
         data = request.get_json()
         message_text = data.get('message')
+        # Pega o tipo de usuário que deve ter sido salvo na sessão do Front-end após o login
         tipo_usuario = data.get('tipo_usuario', 'aluno') 
 
         if not message_text:
@@ -814,6 +813,7 @@ def handle_web_message():
 def handle_whatsapp_message():
     """Endpoint que recebe a mensagem do usuário do WhatsApp via Webhook da Twilio."""
 
+    # Por simplificação, o tipo de usuário no WhatsApp é fixo como 'aluno'
     message_text = request.form.get('Body')
     TIPO_USUARIO_WHATSAPP = 'aluno' 
 
@@ -821,16 +821,19 @@ def handle_whatsapp_message():
         return str(MessagingResponse()), 200
 
     print(f"💬 Mensagem recebida da Twilio: {message_text}")
-
-    resposta_final_texto = rotear_e_executar_mensagem(message_text, TIPO_USUARIO_WHATSAPP)
-
+    
+    # Processa a mensagem
+    response_text = rotear_e_executar_mensagem(message_text, TIPO_USUARIO_WHATSAPP)
+    
+    # Monta a resposta para a Twilio
     resp = MessagingResponse()
-    resp.message(resposta_final_texto)
-    return str(resp)
+    resp.message(response_text)
 
+    return str(resp), 200
 
-# --- EXECUÇÃO PRINCIPAL ---
-init_db()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    init_db()  # Garante que o banco está pronto antes de iniciar o servidor
+    print("🚀 Iniciando o servidor Flask na porta 5000...")
+    # Em produção, use um servidor WSGI (Gunicorn/uWSGI)
+    app.run(debug=True, host='0.0.0.0', port=5000)
