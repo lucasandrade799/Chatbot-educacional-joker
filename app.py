@@ -9,6 +9,7 @@ from twilio.twiml.messaging_response import MessagingResponse
 from flask_cors import CORS
 
 # --- VARIÁVEIS DE CONFIGURAÇÃO E CHAVE API ---
+# Nota: Para o Render, esta chave deve ser configurada como Environment Variable no Dashboard.
 API_KEY_GEMINI = os.environ.get('GEMINI_API_KEY')
 DATABASE_NAME = 'BDchatbot.db'
 
@@ -53,9 +54,9 @@ INSERT OR IGNORE INTO Disciplinas (Nome_Disciplina, Semestre, Tipo_Avaliacao) VA
 ('Fundamentos de Sistemas', 1, 'AVAS'), 
 ('Matemática Discreta', 1, 'AVAS'), 
 ('Arquitetura de Computadores', 1, 'ED'), 
-('Redes de Computadores', 1, 'ED'),      
-('Comunicação Empresarial', 1, 'ED'),    
-('Ética e Cidadania', 1, 'ED'),          
+('Redes de Computadores', 1, 'ED'), 
+('Comunicação Empresarial', 1, 'ED'), 
+('Ética e Cidadania', 1, 'ED'), 
 ('PIM I', 1, 'PIM'), 
 
 -- Semestre 2
@@ -88,7 +89,7 @@ SELECT
     CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL ELSE NULL END AS NP1, 
     CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL ELSE NULL END AS NP2, 
     NULL AS Media_Final, 
-    NULL AS Faltas        
+    NULL AS Faltas 
 FROM Alunos A
 JOIN Disciplinas D;
 """
@@ -428,7 +429,7 @@ def lancar_faltas_api(ra_aluno: str, nome_disciplina: str, faltas: int) -> dict:
         
         aviso = ""
         if info['Tipo_Avaliacao'] in ['AVAS', 'PIM', 'ED']:
-              aviso = f" (AVISO: '{nome_disciplina}' é {info['Tipo_Avaliacao']} e não costuma ter controle de faltas, mas o registro foi salvo.)"
+            aviso = f" (AVISO: '{nome_disciplina}' é {info['Tipo_Avaliacao']} e não costuma ter controle de faltas obrigatório, mas o registro foi salvo.)"
 
         return {"status": "success", "message": f"Lançadas {faltas} faltas para '{nome_disciplina}' ({ra_aluno}).{aviso}"}
 
@@ -440,8 +441,7 @@ def lancar_faltas_api(ra_aluno: str, nome_disciplina: str, faltas: int) -> dict:
 # --- OPERAÇÃO DE LEITURA (Consulta) ---
 
 def verificar_dados_curso_api(ra_aluno: str) -> dict:
-    """OPERAÇÃO 1: Busca o histórico ajustado para as regras de PIM/ED/AVAS.
-       ATUALIZADO: Garante que NP1, NP2 e Media_Final sejam exibidos para AVAS."""
+    """OPERAÇÃO 1: Busca o histórico ajustado para as regras de PIM/ED/AVAS."""
     ra_aluno = ra_aluno.strip().upper()
 
     comando_sql_join = """
@@ -468,7 +468,7 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
             info_user = cursor.fetchone()
             
             if info_user:
-                return {"status": "error", "message": f"O usuário '{info_user['Nome_Completo']}' ({ra_aluno}) não possui histórico acadêmico registrado."}
+                 return {"status": "error", "message": f"O usuário '{info_user['Nome_Completo']}' ({ra_aluno}) não possui histórico acadêmico registrado."}
             
             return {"status": "error", "message": f"A credencial '{ra_aluno}' não foi encontrada."}
 
@@ -512,7 +512,6 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
                     "observacao": "Obrigatória, sem nota. Status: Feito/Não Feito."
                 })
             elif tipo == 'AVAS':
-                # AVAS: NP1, NP2, PIM (do semestre) e Média Final calculada.
                 
                 pim_nota_semestre = _get_pim_nota(conn, id_aluno, reg['Semestre'])
                 media_display = media_val
@@ -533,15 +532,14 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
                     "faltas": faltas_exibicao,
                     "observacao": "Média calculada com PIM. Matéria Online (sem controle de faltas obrigatório)."
                 })
-            else: # Outros tipos (Caso haja erro no BD, usa valores existentes)
-                 disciplina_info.update({
-                     "np1": np1_val if np1_val is not None else "Indefinida",
-                     "np2": np2_val if np2_val is not None else "Indefinida",
-                     "media_final": media_val if media_val is not None else "Indefinida",
-                     "faltas": faltas_val if faltas_val is not None else "Indefinidas",
-                     "observacao": "Tipo de avaliação não reconhecido: " + tipo
-                 })
-                 
+            else: # Outros tipos
+                disciplina_info.update({
+                    "np1": np1_val if np1_val is not None else "Indefinida",
+                    "np2": np2_val if np2_val is not None else "Indefinida",
+                    "media_final": media_val if media_val is not None else "Indefinida",
+                    "faltas": faltas_val if faltas_val is not None else "Indefinidas"
+                })
+                
             historico.append(disciplina_info)
 
         conn.close()
@@ -574,6 +572,7 @@ def buscar_material_estudo_api(topico: str) -> dict:
     )
 
     try:
+        # Chama o Gemini com a ferramenta de busca (Google Search)
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
@@ -695,7 +694,14 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
     return response.text
 
 
-# --- ROTAS DE FLASK (Login e Router) ---
+# --- ROTAS DE FLASK (Servir HTML, Login e Router) ---
+
+# Rota para servir o frontend (joker_bot.html)
+@app.route('/', methods=['GET'])
+def serve_frontend():
+    """Entrega o arquivo HTML para a URL raiz do servidor."""
+    # O caminho deve ser relativo ao diretório onde o app.py está
+    return send_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'joker_bot.html'))
 
 @app.route('/login', methods=['POST'])
 def handle_login():
@@ -779,17 +785,16 @@ def handle_login():
             return jsonify({"status": "error", "message": "Credenciais (RA/Funcional, Senha ou Código) inválidas."}), 401
 
     except Exception as e:
-        print(f"❌ Erro na rota /login: {e}")
+        print(f"❌ Erro na rota de Login: {e}")
         return jsonify({"status": "error", "message": f"Erro interno do servidor: {e}"}), 500
 
 
 @app.route('/router', methods=['POST'])
-def web_router():
+def handle_web_router():
     """Endpoint que recebe a mensagem do usuário do Front-end Web."""
     try:
         data = request.get_json()
         message_text = data.get('message')
-        # Pega o tipo de usuário que deve ter sido salvo na sessão do Front-end após o login
         tipo_usuario = data.get('tipo_usuario', 'aluno') 
 
         if not message_text:
@@ -813,7 +818,6 @@ def web_router():
 def handle_whatsapp_message():
     """Endpoint que recebe a mensagem do usuário do WhatsApp via Webhook da Twilio."""
 
-    # Por simplificação, o tipo de usuário no WhatsApp é fixo como 'aluno'
     message_text = request.form.get('Body')
     TIPO_USUARIO_WHATSAPP = 'aluno' 
 
@@ -822,18 +826,20 @@ def handle_whatsapp_message():
 
     print(f"💬 Mensagem recebida da Twilio: {message_text}")
     
-    # Processa a mensagem
-    response_text = rotear_e_executar_mensagem(message_text, TIPO_USUARIO_WHATSAPP)
+    # 1. Processa a mensagem usando o roteador (simulando um Aluno logado)
+    resposta_texto = rotear_e_executar_mensagem(message_text, TIPO_USUARIO_WHATSAPP)
     
-    # Monta a resposta para a Twilio
+    # 2. Constrói a resposta Twilio
     resp = MessagingResponse()
-    resp.message(response_text)
-
+    resp.message(resposta_texto)
+    
     return str(resp), 200
 
-
+# --- INICIALIZAÇÃO DO SERVIDOR ---
 if __name__ == '__main__':
-    init_db()  # Garante que o banco está pronto antes de iniciar o servidor
-    print("🚀 Iniciando o servidor Flask na porta 5000...")
-    # Em produção, use um servidor WSGI (Gunicorn/uWSGI)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    init_db()  # Garante que o banco seja criado/populado antes de rodar
+    # Para o Render ou produção, é comum usar Gunicorn (não precisa do app.run())
+    # Mas para rodar localmente, o app.run() é essencial
+    # app.run(debug=True) 
+    pass # Deixo em 'pass' para evitar conflito com o modo de execução do ambiente.
+        # Para rodar local, descomente a linha acima: app.run(debug=True)
