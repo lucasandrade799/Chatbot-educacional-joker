@@ -17,6 +17,9 @@ API_KEY_GEMINI = os.environ.get('GEMINI_API_KEY')
 # Variável de ambiente fornecida pelo serviço de DBaaS (Railway, ElephantSQL, etc.)
 DATABASE_URL = os.environ.get('DATABASE_URL') 
 
+# --- FLAG GLOBAL DE ESTABILIDADE (NOVO) ---
+DB_INITIALIZED = False
+
 # --- 1. SCRIPT SQL COMPLETO (ADAPTADO PARA POSTGRESQL) ---
 SQL_SCRIPT_CONTENT = """
 -- CRIAÇÃO DAS TABELAS
@@ -57,9 +60,9 @@ INSERT INTO Disciplinas (Nome_Disciplina, Semestre, Tipo_Avaliacao) VALUES
 ('Fundamentos de Sistemas', 1, 'AVAS'), 
 ('Matemática Discreta', 1, 'AVAS'), 
 ('Arquitetura de Computadores', 1, 'ED'), 
-('Redes de Computadores', 1, 'ED'),       
-('Comunicação Empresarial', 1, 'ED'),     
-('Ética e Cidadania', 1, 'ED'),           
+('Redes de Computadores', 1, 'ED'),     
+('Comunicação Empresarial', 1, 'ED'),   
+('Ética e Cidadania', 1, 'ED'),     
 ('PIM I', 1, 'PIM'), 
 ('Estruturas de Dados', 2, 'AVAS'),
 ('Banco de Dados I', 2, 'AVAS'), 
@@ -115,10 +118,11 @@ else:
 # --- 2. FUNÇÕES DE SUPORTE AO BANCO DE DADOS E CÁLCULOS (ADAPTAÇÃO PARA POSTGRESQL) ---
 
 def init_db():
-    """Cria e popula o banco de dados. Chamado apenas no início do servidor."""
+    """Cria e popula o banco de dados. Chamado apenas uma vez, na primeira requisição."""
     if not DATABASE_URL:
         print("❌ VARIÁVEL DATABASE_URL AUSENTE. O banco de dados PostgreSQL não pode ser inicializado.")
-        exit()
+        # Não usamos exit() aqui.
+        return 
         
     conn = None
     try:
@@ -132,9 +136,9 @@ def init_db():
         conn.commit()
         print("✅ Banco de dados PostgreSQL verificado e pronto para uso.")
     except Psycopg2Error as e:
+        # MUDANÇA CRÍTICA: Removendo o 'exit()'
         print(f"❌ Erro na inicialização do banco de dados (PostgreSQL): {e}")
-        # Se falhar na inicialização, o servidor não deve subir.
-        pass
+        pass # Deixa o processo tentar iniciar novamente sem matar o worker
     finally:
         if conn:
             conn.close()
@@ -177,7 +181,7 @@ def calcular_media_final(np1, np2, pim_nota):
         return round(media, 2)
     except (ValueError, TypeError):
         return None
-    
+        
 def _get_pim_nota(conn, cursor, id_aluno, semestre):
     """Busca a nota PIM de um aluno para um semestre específico."""
     pim_sql = """
@@ -449,7 +453,7 @@ def lancar_faltas_api(ra_aluno: str, nome_disciplina: str, faltas: int) -> dict:
         
         aviso = ""
         if info['tipo_avaliacao'] in ['AVAS', 'PIM', 'ED']:
-             aviso = f" (AVISO: '{nome_disciplina}' é {info['tipo_avaliacao']} e não costuma ter controle de faltas, mas o registro foi salvo.)"
+              aviso = f" (AVISO: '{nome_disciplina}' é {info['tipo_avaliacao']} e não costuma ter controle de faltas, mas o registro foi salvo.)"
 
         return {"status": "success", "message": f"Lançadas {faltas} faltas para '{nome_disciplina}' ({ra_aluno}).{aviso}"}
 
@@ -489,7 +493,7 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
             conn.close()
             
             if info_user:
-                 return {"status": "error", "message": f"O usuário '{info_user['nome_completo']}' ({ra_aluno}) não possui histórico acadêmico registrado."}
+                return {"status": "error", "message": f"O usuário '{info_user['nome_completo']}' ({ra_aluno}) não possui histórico acadêmico registrado."}
             
             return {"status": "error", "message": f"A credencial '{ra_aluno}' não foi encontrada."}
 
@@ -723,9 +727,17 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
 @app.route('/login', methods=['POST'])
 def handle_login():
     """
-    Simulação de autenticação com senhas fixas (Aluno: 123456)
-    e três campos obrigatórios para Professor.
+    Simulação de autenticação.
+    MUDANÇA CRÍTICA: Inicializa o DB na primeira requisição.
     """
+    global DB_INITIALIZED # Importante para modificar a flag global
+    
+    # 1. NOVO: Inicializa o DB na primeira requisição
+    if not DB_INITIALIZED:
+        print("ℹ️ Primeira requisição, inicializando o banco de dados...")
+        init_db()
+        DB_INITIALIZED = True
+        
     conn = None
     try:
         data = request.get_json()
@@ -761,8 +773,8 @@ def handle_login():
         elif tipo_usuario == 'PROFESSOR':
             # 2. Lógica para Professor: verifica 3 campos
             if not codigo_seguranca or len(codigo_seguranca) != 6:
-                 conn.close()
-                 return jsonify({"status": "error", "message": "Código de Segurança inválido. Deve ter 6 dígitos."}), 401
+                conn.close()
+                return jsonify({"status": "error", "message": "Código de Segurança inválido. Deve ter 6 dígitos."}), 401
 
             comando_sql_prof = """
             SELECT Nome_Completo, Tipo_Usuario, Codigo_Seguranca, Senha 
@@ -770,100 +782,59 @@ def handle_login():
             WHERE RA = %s AND Tipo_Usuario = 'Professor'
             """
             cursor.execute(comando_sql_prof, (credencial,))
-            prof_data = cursor.fetchone()
-            
-            if prof_data:
-                # 3. Verifica o Código de Segurança E a Senha do Professor
-                if prof_data['codigo_seguranca'] == codigo_seguranca and prof_data['senha'] == senha:
-                    aluno_info = prof_data
-                    senha_valida = True
+            aluno_info = cursor.fetchone()
 
-        else:
-             conn.close()
-             return jsonify({"status": "error", "message": "Tipo de usuário inválido."}), 400
-
+            if aluno_info and aluno_info['senha'] == senha and aluno_info['codigo_seguranca'] == codigo_seguranca:
+                senha_valida = True
+        
+        # 3. Resultado final da autenticação
         conn.close()
 
-        if aluno_info and senha_valida:
-            # Login bem-sucedido (simulação)
+        if senha_valida and aluno_info:
             return jsonify({
-                "status": "success", 
-                "message": "Login bem-sucedido.", 
-                "user": {
-                    "ra": credencial, 
-                    "nome": aluno_info['nome_completo'],
-                    "tipo_usuario": aluno_info['tipo_usuario'].lower() 
-                }
+                "status": "success",
+                "message": f"Login bem-sucedido. Bem-vindo(a), {aluno_info['nome_completo']}!",
+                "user_name": aluno_info['nome_completo'],
+                "user_type": aluno_info['tipo_usuario'].upper(),
+                "ra": credencial
             }), 200
         else:
-            # Falha na autenticação
-            return jsonify({"status": "error", "message": "Credenciais (RA/Funcional, Senha ou Código) inválidas."}), 401
+            return jsonify({"status": "error", "message": "Credenciais inválidas ou tipo de usuário incorreto."}), 401
 
     except Psycopg2Error as e:
-        print(f"❌ Erro na rota /login (PostgreSQL): {e}")
-        return jsonify({"status": "error", "message": "Erro de conexão/consulta ao banco de dados."}), 500
-    except Exception as e:
-        print(f"❌ Erro na rota /login: {e}")
-        return jsonify({"status": "error", "message": "Erro interno do servidor."}), 500
-    finally:
         if conn:
             conn.close()
+        # Se falhar aqui, é provável que a inicialização falhou
+        return jsonify({"status": "error", "message": f"Erro de conexão com o banco de dados. Tente novamente em breve. Detalhe: {e}"}), 500
+    except Exception as e:
+        if conn:
+            conn.close()
+        return jsonify({"status": "error", "message": f"Erro interno: {e}"}), 500
 
 
-@app.route('/')
-def serve_index():
-    """Serva o arquivo joker_bot.html principal, que está na raiz."""
-    return send_file('joker_bot.html')
-
-@app.route('/web_router', methods=['POST'])
-def handle_web_message():
-    """Endpoint que recebe a mensagem do usuário do Front-end Web."""
+@app.route('/chat', methods=['POST'])
+def handle_chat():
+    """Rota principal de comunicação com o chatbot."""
+    # Garante que a requisição POST está no formato esperado
     try:
         data = request.get_json()
-        message_text = data.get('message')
-        tipo_usuario = data.get('tipo_usuario', 'aluno') 
-
-        if not message_text:
-            return jsonify({"status": "error", "message": "Mensagem de texto não fornecida."}), 400
-
-        print(f"🌐 Mensagem recebida de {tipo_usuario.upper()}: {message_text}")
-
-        resposta_final_texto = rotear_e_executar_mensagem(message_text, tipo_usuario)
-
-        return jsonify({
-            "status": "success",
-            "message": resposta_final_texto
-        }), 200
-
+        mensagem = data.get('mensagem')
+        tipo_usuario = data.get('tipo_usuario')
+        
+        if not mensagem or not tipo_usuario:
+            return jsonify({"status": "error", "message": "Mensagem e tipo de usuário são obrigatórios."}), 400
+            
     except Exception as e:
-        print(f"❌ Erro no Web Router: {e}")
-        return jsonify({"status": "error", "message": f"Erro interno do servidor: {e}"}), 500
+        return jsonify({"status": "error", "message": f"Formato de requisição JSON inválido: {e}"}), 400
+
+    # Roteia e executa a mensagem usando o Gemini
+    resposta_chatbot = rotear_e_executar_mensagem(mensagem, tipo_usuario)
+
+    return jsonify({"status": "success", "resposta": resposta_chatbot}), 200
 
 
-@app.route('/whatsapp_webhook', methods=['POST'])
-def handle_whatsapp_message():
-    """Endpoint que recebe a mensagem do usuário do WhatsApp via Webhook da Twilio."""
-
-    message_text = request.form.get('Body')
-    TIPO_USUARIO_WHATSAPP = 'aluno' 
-
-    if not message_text:
-        return str(MessagingResponse()), 200
-
-    print(f"💬 Mensagem recebida da Twilio: {message_text}")
-
-    resposta_final_texto = rotear_e_executar_mensagem(message_text, TIPO_USUARIO_WHATSAPP)
-
-    resp = MessagingResponse()
-    resp.message(resposta_final_texto)
-    return str(resp)
-
-
-# --- EXECUÇÃO PRINCIPAL ---
-init_db()
-
-if __name__ == '__main__':
-    app.run(debug=True)
-
-
-
+@app.route('/', methods=['GET'])
+def index():
+    """Serve o arquivo HTML estático (Frontend)."""
+    # Assume que o frontend (joker_bot.html) está na raiz
+    return send_file('joker_bot.html')
