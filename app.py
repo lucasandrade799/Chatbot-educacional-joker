@@ -838,8 +838,5 @@ def handle_whatsapp_message():
 # --- INICIALIZAÇÃO DO SERVIDOR ---
 if __name__ == '__main__':
     init_db()  # Garante que o banco seja criado/populado antes de rodar
-    # Para o Render ou produção, é comum usar Gunicorn (não precisa do app.run())
-    # Mas para rodar localmente, o app.run() é essencial
-    # app.run(debug=True) 
-    pass # Deixo em 'pass' para evitar conflito com o modo de execução do ambiente.
-        # Para rodar local, descomente a linha acima: app.run(debug=True)
+    app.run(debug=True)
+
