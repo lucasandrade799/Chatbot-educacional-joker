@@ -15,7 +15,7 @@ from flask_cors import CORS
 # --- VARIÁVEIS DE CONFIGURAÇÃO E CHAVE API ---
 API_KEY_GEMINI = os.environ.get('GEMINI_API_KEY')
 # Variável de ambiente fornecida pelo serviço de DBaaS (Railway, ElephantSQL, etc.)
-DATABASE_URL = os.environ.get('DATABASE_URL') 
+DATABASE_URL = os.environ.get('DATABASE_URL') or os.environ.get('DATABASE_PUBLIC_URL')
 
 # --- FLAG GLOBAL DE ESTABILIDADE (NOVO) ---
 DB_INITIALIZED = False
@@ -858,3 +858,4 @@ if __name__ == '__main__':
     # Em produção (Railway/Gunicorn), ela é ignorada.
     print("\n--- AVISO: Rodando localmente. Em produção, use Gunicorn/Procfile. ---")
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
