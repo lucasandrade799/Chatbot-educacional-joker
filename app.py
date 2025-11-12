@@ -1,6 +1,6 @@
 import os
 import json
-# --- NOVOS IMPORTS PARA POSTGRESQL ---
+# --- IMPORTS PARA POSTGRESQL ---
 import psycopg2
 import psycopg2.extras 
 from psycopg2 import Error as Psycopg2Error
@@ -115,17 +115,20 @@ else:
     print("⚠️ Chave API do Gemini ausente. A Op. 2 e o roteador não funcionarão.")
 
 
-# --- 2. FUNÇÕES DE SUPORTE AO BANCO DE DADOS E CÁLCULOS (ADAPTAÇÃO PARA POSTGRESQL) ---
+# --- 2. FUNÇÕES DE SUPORTE AO BANCO DE DADOS E CÁLCULOS (VERSÃO ROBUSTA) ---
 
 def init_db():
     """Cria e popula o banco de dados. Chamado apenas uma vez, na primeira requisição."""
     if not DATABASE_URL:
-        print("❌ VARIÁVEL DATABASE_URL AUSENTE. O banco de dados PostgreSQL não pode ser inicializado.")
-        return 
+        # Erro fatal se a variável não estiver no ambiente
+        print("❌ ERRO CRÍTICO: VARIÁVEL DATABASE_URL AUSENTE. O banco de dados PostgreSQL não pode ser inicializado.")
+        # Retorna False para indicar falha
+        return False
         
     conn = None
     try:
-        # Usa a URL de conexão
+        print("⏳ Tentando conectar e inicializar o banco de dados PostgreSQL...")
+        # Tenta a conexão
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
         
@@ -134,10 +137,12 @@ def init_db():
         
         conn.commit()
         print("✅ Banco de dados PostgreSQL verificado e pronto para uso.")
+        # Retorna True para indicar sucesso
+        return True
     except Psycopg2Error as e:
-        # MUDANÇA CRÍTICA: Não usamos exit(). Apenas registramos o erro e a requisição falhará.
-        print(f"❌ Erro na inicialização do banco de dados (PostgreSQL): {e}")
-        pass # Deixa o processo tentar iniciar novamente sem matar o worker
+        # Se a conexão falhar ou a SQL der erro, registra a mensagem detalhada
+        print(f"❌ ERRO GRAVE na inicialização do banco de dados (PostgreSQL): {e}")
+        return False # Indica que a inicialização falhou
     finally:
         if conn:
             conn.close()
@@ -148,11 +153,20 @@ def get_db_connection():
     retornar resultados como dicionário (RealDictCursor).
     """
     if not DATABASE_URL:
-        raise Exception("DATABASE_URL não configurada.")
-        
-    conn = psycopg2.connect(DATABASE_URL)
-    # Usa RealDictCursor para simular o comportamento de linha como dicionário
-    return conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        # Não permite a execução de rotas sem a URL de conexão
+        raise Exception("ERRO: DATABASE_URL não configurada. Conexão ao DB falhou.")
+    
+    # Tenta conectar
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        # Usa RealDictCursor para simular o comportamento de linha como dicionário
+        return conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    except Psycopg2Error as e:
+        # Captura e relança o erro de conexão para ser pego pela rota
+        raise Exception(f"ERRO DE CONEXÃO AO POSTGRESQL: Não foi possível conectar ao DB. Detalhe: {e}")
+    except Exception as e:
+        # Captura outros erros
+        raise Exception(f"ERRO DESCONHECIDO NA CONEXÃO AO DB: {e}")
 
 
 def formatar_valor(valor):
@@ -731,14 +745,18 @@ def handle_login():
     """
     global DB_INITIALIZED # Importante para modificar a flag global
     
-    # 1. NOVO: Inicializa o DB na primeira requisição
-    if not DB_INITIALIZED:
-        print("ℹ️ Primeira requisição, inicializando o banco de dados...")
-        init_db()
-        DB_INITIALIZED = True
-        
     conn = None
     try:
+        # 1. NOVO: Tenta inicializar o DB na primeira requisição, se ainda não foi feito.
+        if not DB_INITIALIZED:
+            print("ℹ️ Primeira requisição de login. Tentando inicializar o banco de dados...")
+            # A função init_db agora retorna True/False
+            if init_db():
+                DB_INITIALIZED = True
+            else:
+                # Se falhar a inicialização, a flag continua False e retorna erro.
+                return jsonify({"status": "error", "message": "Falha crítica ao inicializar o banco de dados. Verifique a variável DATABASE_URL nos logs."}), 503
+
         data = request.get_json()
         tipo_usuario = data.get('tipo_usuario', '').strip().upper()
         
@@ -755,6 +773,7 @@ def handle_login():
         if not credencial or not senha:
             return jsonify({"status": "error", "message": "Credencial e Senha são obrigatórios."}), 400
 
+        # Tenta obter a conexão (a função get_db_connection agora levanta exceção se falhar)
         conn, cursor = get_db_connection()
         aluno_info = None
         senha_valida = False # Define como falso por padrão
@@ -796,13 +815,10 @@ def handle_login():
         else:
             return jsonify({"status": "error", "message": "Credenciais inválidas."}), 401
     
-    except Psycopg2Error as e:
-        if conn:
-            conn.close()
-        return jsonify({"status": "error", "message": f"Erro interno do servidor ao acessar o banco de dados: {e}"}), 500
     except Exception as e:
         if conn:
             conn.close()
+        # Captura tanto erros do DB (via get_db_connection) quanto erros gerais
         return jsonify({"status": "error", "message": f"Erro interno do servidor: {e}"}), 500
 
 
