@@ -134,7 +134,7 @@ def init_db():
     except Psycopg2Error as e:
         print(f"❌ Erro na inicialização do banco de dados (PostgreSQL): {e}")
         # Se falhar na inicialização, o servidor não deve subir.
-        exit()
+        pass
     finally:
         if conn:
             conn.close()
@@ -864,5 +864,6 @@ init_db()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
