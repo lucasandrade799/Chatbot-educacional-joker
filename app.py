@@ -60,7 +60,7 @@ INSERT INTO Disciplinas (Nome_Disciplina, Semestre, Tipo_Avaliacao) VALUES
 ('Fundamentos de Sistemas', 1, 'AVAS'), 
 ('Matemática Discreta', 1, 'AVAS'), 
 ('Arquitetura de Computadores', 1, 'ED'), 
-('Redes de Computadores', 1, 'ED'),     
+('Redes de Computadores', 1, 'ED'),      
 ('Comunicação Empresarial', 1, 'ED'),   
 ('Ética e Cidadania', 1, 'ED'),     
 ('PIM I', 1, 'PIM'), 
@@ -94,7 +94,7 @@ SELECT
     CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL ELSE NULL END AS NP1, 
     CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL ELSE NULL END AS NP2, 
     NULL AS Media_Final, 
-    NULL AS Faltas       
+    NULL AS Faltas        
 FROM Alunos A
 CROSS JOIN Disciplinas D
 ON CONFLICT (fk_id_aluno, fk_id_disciplina) DO NOTHING;
@@ -121,7 +121,6 @@ def init_db():
     """Cria e popula o banco de dados. Chamado apenas uma vez, na primeira requisição."""
     if not DATABASE_URL:
         print("❌ VARIÁVEL DATABASE_URL AUSENTE. O banco de dados PostgreSQL não pode ser inicializado.")
-        # Não usamos exit() aqui.
         return 
         
     conn = None
@@ -136,7 +135,7 @@ def init_db():
         conn.commit()
         print("✅ Banco de dados PostgreSQL verificado e pronto para uso.")
     except Psycopg2Error as e:
-        # MUDANÇA CRÍTICA: Removendo o 'exit()'
+        # MUDANÇA CRÍTICA: Não usamos exit(). Apenas registramos o erro e a requisição falhará.
         print(f"❌ Erro na inicialização do banco de dados (PostgreSQL): {e}")
         pass # Deixa o processo tentar iniciar novamente sem matar o worker
     finally:
@@ -172,8 +171,9 @@ def calcular_media_final(np1, np2, pim_nota):
     Retorna float se cálculo possível, senão None.
     """
     if np1 is None or np2 is None or pim_nota is None:
-        return None  # Não é possível calcular
+        return None 
     try:
+        # Converta Decimal para float antes de calcular
         np1 = float(np1)
         np2 = float(np2)
         pim_nota = float(pim_nota)
@@ -298,8 +298,7 @@ def lancar_nota_np_api(ra_aluno: str, nome_disciplina: str, np_qual: str, nota: 
             return {"status": "error", "message": f"Lançamento de NP1/NP2 só é permitido para matérias AVAS. '{nome_disciplina}' é {info['tipo_avaliacao']}."}
 
         # 2. Atualizar nota NP
-        # IMPORTANTE: No PostgreSQL, a substituição de %s só funciona para valores, não para nomes de colunas.
-        # Por isso, o nome da coluna é injetado diretamente (cuidado com SQL Injection, mas neste caso o valor é controlado)
+        # A coluna é injetada diretamente, mas é seguro pois np_qual é validado como 'NP1' ou 'NP2'
         sql_update_np = f"""
         UPDATE Historico_Academico 
         SET {np_qual} = %s
@@ -773,68 +772,73 @@ def handle_login():
         elif tipo_usuario == 'PROFESSOR':
             # 2. Lógica para Professor: verifica 3 campos
             if not codigo_seguranca or len(codigo_seguranca) != 6:
-                conn.close()
-                return jsonify({"status": "error", "message": "Código de Segurança inválido. Deve ter 6 dígitos."}), 401
+                # Retorna erro se o código de segurança estiver faltando ou inválido
+                conn.close() 
+                return jsonify({"status": "error", "message": "Código de Segurança é obrigatório (6 dígitos)."}), 400
 
-            comando_sql_prof = """
-            SELECT Nome_Completo, Tipo_Usuario, Codigo_Seguranca, Senha 
-            FROM Alunos 
-            WHERE RA = %s AND Tipo_Usuario = 'Professor'
-            """
-            cursor.execute(comando_sql_prof, (credencial,))
-            aluno_info = cursor.fetchone()
-
-            if aluno_info and aluno_info['senha'] == senha and aluno_info['codigo_seguranca'] == codigo_seguranca:
+            comando_sql_prof = "SELECT Nome_Completo, Tipo_Usuario, Senha FROM Alunos WHERE RA = %s AND Tipo_Usuario = 'Professor' AND Codigo_Seguranca = %s"
+            cursor.execute(comando_sql_prof, (credencial, codigo_seguranca))
+            aluno_info = cursor.fetchone() # Note: o professor está na tabela Alunos
+            
+            # Verifica se encontrou o professor E se a senha confere
+            if aluno_info and aluno_info['senha'] == senha:
                 senha_valida = True
         
-        # 3. Resultado final da autenticação
-        conn.close()
+        # --- FIM DA LÓGICA DE AUTENTICAÇÃO ---
+        conn.close() # Fecha a conexão após a consulta de autenticação
 
-        if senha_valida and aluno_info:
+        if senha_valida:
             return jsonify({
                 "status": "success",
-                "message": f"Login bem-sucedido. Bem-vindo(a), {aluno_info['nome_completo']}!",
-                "user_name": aluno_info['nome_completo'],
-                "user_type": aluno_info['tipo_usuario'].upper(),
-                "ra": credencial
-            }), 200
+                "message": f"Bem-vindo(a), {aluno_info['nome_completo']}!",
+                "tipo_usuario": aluno_info['tipo_usuario']
+            })
         else:
-            return jsonify({"status": "error", "message": "Credenciais inválidas ou tipo de usuário incorreto."}), 401
-
+            return jsonify({"status": "error", "message": "Credenciais inválidas."}), 401
+    
     except Psycopg2Error as e:
         if conn:
             conn.close()
-        # Se falhar aqui, é provável que a inicialização falhou
-        return jsonify({"status": "error", "message": f"Erro de conexão com o banco de dados. Tente novamente em breve. Detalhe: {e}"}), 500
+        return jsonify({"status": "error", "message": f"Erro interno do servidor ao acessar o banco de dados: {e}"}), 500
     except Exception as e:
         if conn:
             conn.close()
-        return jsonify({"status": "error", "message": f"Erro interno: {e}"}), 500
-
-
-@app.route('/chat', methods=['POST'])
-def handle_chat():
-    """Rota principal de comunicação com o chatbot."""
-    # Garante que a requisição POST está no formato esperado
-    try:
-        data = request.get_json()
-        mensagem = data.get('mensagem')
-        tipo_usuario = data.get('tipo_usuario')
-        
-        if not mensagem or not tipo_usuario:
-            return jsonify({"status": "error", "message": "Mensagem e tipo de usuário são obrigatórios."}), 400
-            
-    except Exception as e:
-        return jsonify({"status": "error", "message": f"Formato de requisição JSON inválido: {e}"}), 400
-
-    # Roteia e executa a mensagem usando o Gemini
-    resposta_chatbot = rotear_e_executar_mensagem(mensagem, tipo_usuario)
-
-    return jsonify({"status": "success", "resposta": resposta_chatbot}), 200
+        return jsonify({"status": "error", "message": f"Erro interno do servidor: {e}"}), 500
 
 
 @app.route('/', methods=['GET'])
 def index():
-    """Serve o arquivo HTML estático (Frontend)."""
-    # Assume que o frontend (joker_bot.html) está na raiz
+    """Rota para servir o arquivo HTML principal (frontend)."""
+    # Presumindo que o seu frontend (joker_bot.html) está na mesma pasta do app.py
     return send_file('joker_bot.html')
+
+@app.route('/chatbot', methods=['POST'])
+def handle_chatbot_message():
+    """
+    Rota principal para receber as mensagens do frontend (após login).
+    """
+    data = request.get_json()
+    mensagem = data.get('message')
+    tipo_usuario = data.get('user_type', 'ALUNO').upper() # Recebe o tipo de usuário logado
+    ra_logado = data.get('logged_ra') # Recebe o RA ou funcional logado (importante para consultas)
+    
+    if not mensagem:
+        return jsonify({"response": "Por favor, envie uma mensagem."}), 400
+
+    # Adiciona o RA/Funcional ao prompt para dar contexto ao Gemini
+    if ra_logado:
+        contexto_logado = f"Minha credencial de acesso (RA/Funcional) é {ra_logado}. "
+    else:
+        contexto_logado = ""
+
+    # Passa o tipo de usuário para o roteador para aplicar as permissões
+    resposta_gemini = rotear_e_executar_mensagem(contexto_logado + mensagem, tipo_usuario)
+    
+    return jsonify({"response": resposta_gemini})
+
+
+if __name__ == '__main__':
+    # Esta linha é executada apenas se você rodar localmente (python app.py)
+    # Em produção (Railway/Gunicorn), ela é ignorada.
+    print("\n--- AVISO: Rodando localmente. Em produção, use Gunicorn/Procfile. ---")
+    app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
