@@ -20,7 +20,8 @@ DATABASE_URL = os.environ.get('DATABASE_URL') or os.environ.get('DATABASE_PUBLIC
 # --- FLAG GLOBAL DE ESTABILIDADE (NOVO) ---
 DB_INITIALIZED = False
 
-# --- 1. SCRIPT SQL COMPLETO (ADAPTADO PARA POSTGRESQL) ---
+# --- 1. SCRIPT SQL COMPLETO (ADAPTADO E CORRIGIDO PARA POSTGRESQL) ---
+# CORREÇÃO: Uso de NULL::NUMERIC e NULL::INT para evitar erros de tipo na inicialização (text vs numeric)
 SQL_SCRIPT_CONTENT = """
 -- CRIAÇÃO DAS TABELAS
 CREATE TABLE IF NOT EXISTS Alunos (
@@ -60,9 +61,9 @@ INSERT INTO Disciplinas (Nome_Disciplina, Semestre, Tipo_Avaliacao) VALUES
 ('Fundamentos de Sistemas', 1, 'AVAS'), 
 ('Matemática Discreta', 1, 'AVAS'), 
 ('Arquitetura de Computadores', 1, 'ED'), 
-('Redes de Computadores', 1, 'ED'),      
-('Comunicação Empresarial', 1, 'ED'),   
-('Ética e Cidadania', 1, 'ED'),     
+('Redes de Computadores', 1, 'ED'), 
+('Comunicação Empresarial', 1, 'ED'), 
+('Ética e Cidadania', 1, 'ED'), 
 ('PIM I', 1, 'PIM'), 
 ('Estruturas de Dados', 2, 'AVAS'),
 ('Banco de Dados I', 2, 'AVAS'), 
@@ -91,10 +92,11 @@ INSERT INTO Historico_Academico (fk_id_aluno, fk_id_disciplina, NP1, NP2, Media_
 SELECT 
     A.id_aluno, 
     D.id_disciplina,
-    CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL ELSE NULL END AS NP1, 
-    CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL ELSE NULL END AS NP2, 
-    NULL AS Media_Final, 
-    NULL AS Faltas        
+    -- CORRIGIDO: Usa NULL::NUMERIC para tipar o NULL corretamente
+    CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL::NUMERIC ELSE NULL::NUMERIC END AS NP1, 
+    CASE WHEN D.Tipo_Avaliacao IN ('PIM', 'ED') THEN NULL::NUMERIC ELSE NULL::NUMERIC END AS NP2, 
+    NULL::NUMERIC AS Media_Final, 
+    NULL::INT AS Faltas       
 FROM Alunos A
 CROSS JOIN Disciplinas D
 ON CONFLICT (fk_id_aluno, fk_id_disciplina) DO NOTHING;
@@ -309,7 +311,7 @@ def lancar_nota_np_api(ra_aluno: str, nome_disciplina: str, np_qual: str, nota: 
         
         if info['tipo_avaliacao'] != 'AVAS':
             conn.close()
-            return {"status": "error", "message": f"Lançamento de NP1/NP2 só é permitido para matérias AVAS. '{nome_disciplina}' é {info['tipo_avaliacao']}."}
+            return {"status": "error", "message": f"Lançamento de NP1/NP2 só é permitido para matérias AVAS. '{nome_disciplina}' é {info['tipo_avaliacao']}. - Joker."}
 
         # 2. Atualizar nota NP
         # A coluna é injetada diretamente, mas é seguro pois np_qual é validado como 'NP1' ou 'NP2'
@@ -361,7 +363,7 @@ def lancar_nota_pim_api(ra_aluno: str, nome_disciplina_pim: str, nota: float) ->
         
         if info['tipo_avaliacao'] != 'PIM':
             conn.close()
-            return {"status": "error", "message": f"'{nome_disciplina_pim}' não é uma disciplina PIM."}
+            return {"status": "error", "message": f"'{nome_disciplina_pim}' não é uma disciplina PIM. - Joker."}
 
         # 2. Atualizar nota PIM (que fica no campo Media_Final)
         sql_update_pim = """
@@ -408,7 +410,7 @@ def marcar_ed_concluido_api(ra_aluno: str, nome_disciplina_ed: str) -> dict:
         
         if info['tipo_avaliacao'] != 'ED':
             conn.close()
-            return {"status": "error", "message": f"'{nome_disciplina_ed}' não é uma disciplina ED. Só é possível marcar status de conclusão para ED."}
+            return {"status": "error", "message": f"'{nome_disciplina_ed}' não é uma disciplina ED. Só é possível marcar status de conclusão para ED. - Joker."}
 
         # 2. Atualizar status (Media_Final = 1.0 como flag de conclusão)
         sql_update_ed = """
@@ -771,91 +773,103 @@ def handle_login():
         codigo_seguranca = data.get('codigo_seguranca', '').strip()
 
         if not credencial or not senha:
-            return jsonify({"status": "error", "message": "Credencial e Senha são obrigatórios."}), 400
+            return jsonify({"status": "error", "message": "Credencial (RA/Funcional) e Senha são obrigatórias."}), 400
 
-        # Tenta obter a conexão (a função get_db_connection agora levanta exceção se falhar)
         conn, cursor = get_db_connection()
-        aluno_info = None
-        senha_valida = False # Define como falso por padrão
-
-        if tipo_usuario == 'ALUNO':
-            # 1. Lógica para Aluno: verifica RA, Tipo e Senha
-            comando_sql_aluno = "SELECT Nome_Completo, Tipo_Usuario, Senha FROM Alunos WHERE RA = %s AND Tipo_Usuario = 'Aluno'"
-            cursor.execute(comando_sql_aluno, (credencial,))
-            aluno_info = cursor.fetchone()
-            
-            # Verifica se encontrou o aluno E se a senha confere
-            if aluno_info and aluno_info['senha'] == senha:
-                senha_valida = True
-            
-        elif tipo_usuario == 'PROFESSOR':
-            # 2. Lógica para Professor: verifica 3 campos
-            if not codigo_seguranca or len(codigo_seguranca) != 6:
-                # Retorna erro se o código de segurança estiver faltando ou inválido
-                conn.close() 
-                return jsonify({"status": "error", "message": "Código de Segurança é obrigatório (6 dígitos)."}), 400
-
-            comando_sql_prof = "SELECT Nome_Completo, Tipo_Usuario, Senha FROM Alunos WHERE RA = %s AND Tipo_Usuario = 'Professor' AND Codigo_Seguranca = %s"
-            cursor.execute(comando_sql_prof, (credencial, codigo_seguranca))
-            aluno_info = cursor.fetchone() # Note: o professor está na tabela Alunos
-            
-            # Verifica se encontrou o professor E se a senha confere
-            if aluno_info and aluno_info['senha'] == senha:
-                senha_valida = True
         
-        # --- FIM DA LÓGICA DE AUTENTICAÇÃO ---
-        conn.close() # Fecha a conexão após a consulta de autenticação
+        if tipo_usuario == 'ALUNO':
+            # Aluno: RA e Senha
+            sql = "SELECT Nome_Completo FROM Alunos WHERE RA = %s AND Senha = %s AND Tipo_Usuario = 'Aluno'"
+            cursor.execute(sql, (credencial, senha))
+        elif tipo_usuario == 'PROFESSOR':
+            # Professor: Funcional (RA), Senha e Código de Segurança
+            sql = "SELECT Nome_Completo FROM Alunos WHERE RA = %s AND Senha = %s AND Codigo_Seguranca = %s AND Tipo_Usuario = 'Professor'"
+            # Nota: O campo funcional (RA) do professor é usado para login
+            cursor.execute(sql, (credencial, senha, codigo_seguranca))
+        else:
+            conn.close()
+            return jsonify({"status": "error", "message": "Tipo de usuário inválido."}), 400
 
-        if senha_valida:
+        user_info = cursor.fetchone()
+
+        if user_info:
+            conn.close()
             return jsonify({
                 "status": "success",
-                "message": f"Bem-vindo(a), {aluno_info['nome_completo']}!",
-                "tipo_usuario": aluno_info['tipo_usuario']
-            })
+                "message": "Login bem-sucedido!",
+                "user": {
+                    "nome": user_info['nome_completo'],
+                    "ra": credencial,
+                    "tipo_usuario": tipo_usuario.lower()
+                }
+            }), 200
         else:
-            return jsonify({"status": "error", "message": "Credenciais inválidas."}), 401
-    
+            conn.close()
+            return jsonify({"status": "error", "message": "Credenciais inválidas. Verifique RA/Funcional, Senha e Código de Segurança (Professor)."}), 401
+
     except Exception as e:
         if conn:
             conn.close()
-        # Captura tanto erros do DB (via get_db_connection) quanto erros gerais
-        return jsonify({"status": "error", "message": f"Erro interno do servidor: {e}"}), 500
+        # Captura erros de rede/DB que ocorrem após a inicialização, mas antes do login
+        return jsonify({"status": "error", "message": f"Erro de servidor: {e}"}), 500
+
+@app.route('/web_router', methods=['POST'])
+def web_router():
+    """
+    Rota unificada para receber mensagens do chat e rotear para o Gemini/DB.
+    """
+    # Garante que o DB esteja inicializado antes de permitir o roteamento
+    global DB_INITIALIZED
+    if not DB_INITIALIZED:
+        # Tenta inicializar novamente, caso tenha falhado na primeira requisição de login
+        if init_db():
+            DB_INITIALIZED = True
+        else:
+            return jsonify({"error": "Serviço indisponível. Falha na inicialização do banco de dados."}), 503
+
+    try:
+        data = request.get_json()
+        message = data.get('message', '').strip()
+        tipo_usuario = data.get('tipo_usuario', '').strip()
+
+        if not message:
+            return jsonify({"error": "Mensagem vazia."}), 400
+        
+        if not tipo_usuario:
+            return jsonify({"error": "Tipo de usuário ausente na requisição."}), 400
+
+        # Chama a função principal de roteamento e execução
+        response_text = rotear_e_executar_mensagem(message, tipo_usuario)
+
+        return jsonify({"message": response_text}), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Erro interno no roteador: {e}"}), 500
 
 
-@app.route('/', methods=['GET'])
+@app.route('/<path:filename>')
+def serve_static(filename):
+    """
+    Serve arquivos estáticos (CSS, JS, imagens) localizados na pasta 'static'.
+    Isso é necessário para rodar o Flask em produção (como no Railway) servindo HTML e arquivos relacionados.
+    """
+    # A rota raiz (/) e a rota /login já estão mapeadas.
+    # Esta rota captura qualquer outra URL e tenta servi-la do diretório estático.
+    if filename == 'index.html':
+        return send_file(filename)
+    return send_file(filename)
+
+
+@app.route('/')
 def index():
-    """Rota para servir o arquivo HTML principal (frontend)."""
-    # Presumindo que o seu frontend (joker_bot.html) está na mesma pasta do app.py
-    return send_file('joker_bot.html')
-
-@app.route('/chatbot', methods=['POST'])
-def handle_chatbot_message():
     """
-    Rota principal para receber as mensagens do frontend (após login).
+    Rota da página inicial.
     """
-    data = request.get_json()
-    mensagem = data.get('message')
-    tipo_usuario = data.get('user_type', 'ALUNO').upper() # Recebe o tipo de usuário logado
-    ra_logado = data.get('logged_ra') # Recebe o RA ou funcional logado (importante para consultas)
-    
-    if not mensagem:
-        return jsonify({"response": "Por favor, envie uma mensagem."}), 400
-
-    # Adiciona o RA/Funcional ao prompt para dar contexto ao Gemini
-    if ra_logado:
-        contexto_logado = f"Minha credencial de acesso (RA/Funcional) é {ra_logado}. "
-    else:
-        contexto_logado = ""
-
-    # Passa o tipo de usuário para o roteador para aplicar as permissões
-    resposta_gemini = rotear_e_executar_mensagem(contexto_logado + mensagem, tipo_usuario)
-    
-    return jsonify({"response": resposta_gemini})
+    return send_file('index.html')
 
 
 if __name__ == '__main__':
-    # Esta linha é executada apenas se você rodar localmente (python app.py)
-    # Em produção (Railway/Gunicorn), ela é ignorada.
-    print("\n--- AVISO: Rodando localmente. Em produção, use Gunicorn/Procfile. ---")
-    app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
-
+    # Em ambientes de produção (como Railway), a porta é definida pela variável de ambiente PORT
+    port = int(os.environ.get('PORT', 5000))
+    # Note que no Railway, a inicialização do DB é feita na primeira requisição para garantir que as variáveis de ambiente do DB estejam prontas.
+    app.run(host='0.0.0.0', port=port, debug=False)
