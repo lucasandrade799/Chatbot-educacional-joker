@@ -199,6 +199,23 @@ def _get_pim_nota(conn, cursor, id_aluno, semestre):
     # Retorna o valor float do campo 'media_final' ou None
     return float(pim_result['media_final']) if pim_result and pim_result['media_final'] is not None else None
 
+def _get_all_pim_notas(conn, cursor, id_aluno):
+    """Busca todas as notas PIM de um aluno e retorna um dicionário {semestre: nota_pim}."""
+    pim_sql = """
+    SELECT D.Semestre, H.Media_Final 
+    FROM Historico_Academico H
+    JOIN Disciplinas D ON H.fk_id_disciplina = D.id_disciplina
+    WHERE H.fk_id_aluno = %s AND D.Tipo_Avaliacao = 'PIM'
+    """
+    cursor.execute(pim_sql, (id_aluno,))
+    results = cursor.fetchall()
+    
+    pim_notas = {}
+    for res in results:
+        # Store as float or None
+        pim_notas[res['semestre']] = float(res['media_final']) if res['media_final'] is not None else None
+    return pim_notas
+
 def _recalcular_e_salvar_media_geral(conn, cursor, id_aluno, nome_disciplina):
     """Recalcula e salva a Media_Final para QUALQUER disciplina que não seja PIM."""
     sql_dados = """
@@ -444,17 +461,26 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
 
         historico = []
         id_aluno = registros[0]['id_aluno']
+        
+        # OTIMIZAÇÃO: Pré-busca de todas as notas PIM por semestre
+        pim_notas_por_semestre = _get_all_pim_notas(conn, cursor, id_aluno)
 
         for reg in registros:
             tipo = reg['tipo_avaliacao'].upper()
+            semestre_atual = reg['semestre']
             
+            # **MUDANÇA CRÍTICA:** Ignora o PIM da exibição, ele só é um valor de cálculo.
+            if tipo == 'PIM':
+                continue # Pula a disciplina PIM da lista de exibição
+
+            # Busca a nota PIM no dicionário pré-buscado
+            pim_nota_semestre = pim_notas_por_semestre.get(semestre_atual)
+
             np1_val = formatar_valor(reg['np1'])
             np2_val = formatar_valor(reg['np2'])
-            media_val = formatar_valor(reg['media_final'])
             faltas_val = reg['faltas'] if reg['faltas'] is not None else None
-            pim_nota_semestre = _get_pim_nota(conn, cursor, id_aluno, reg['semestre']) # Retorna float ou None
             
-            # Recalcula a média se for TEORICA/ED (é o comportamento desejado)
+            # Recalcula a média (o comportamento desejado é sempre usar a NP1/NP2/PIM, se disponíveis)
             calculated_media = calcular_media_final(reg['np1'], reg['np2'], pim_nota_semestre)
             media_display = formatar_valor(calculated_media) if calculated_media is not None else "Indefinida"
             
@@ -466,48 +492,37 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
                 "disciplina": reg['nome_disciplina'],
                 "tipo": tipo,
             }
+            
+            # Lógica de Status
+            media_float = float(media_display) if media_display and media_display != "Indefinida" else None
+            status_aprovacao = "Indefinido"
 
-            if tipo == 'PIM':
-                # PIM: Não tem NP1/NP2, a nota é a média_final do registro
-                disciplina_info.update({
-                    "np1": "N/A",
-                    "np2": "N/A",
-                    "pim_nota": formatar_valor(reg['media_final']) if reg['media_final'] is not None else "Indefinida",
-                    "media_final": "N/A",
-                    "faltas": "N/A",
-                    "status_conclusao": "Nota de trabalho"
-                })
-            else: # TEORICA e ED
-                
-                # Lógica de Status
-                media_float = float(media_display) if media_display and media_display != "Indefinida" else None
-                status_aprovacao = "Indefinido"
+            if media_float is not None:
+                if media_float >= NOTA_CORTE_APROVACAO:
+                    status_aprovacao = "Aprovado"
+                else:
+                    status_aprovacao = "Reprovado"
+            
+            # Campos de notas para TEORICA/ED
+            disciplina_info.update({
+                "np1": np1_val if np1_val is not None else "Indefinida",
+                "np2": np2_val if np2_val is not None else "Indefinida",
+                "pim_nota": formatar_valor(pim_nota_semestre) if pim_nota_semestre is not None else "Indefinida",
+                "media_final": media_display,
+                "faltas": faltas_exibicao,
+            })
 
-                if media_float is not None:
-                    if media_float >= NOTA_CORTE_APROVACAO:
-                        status_aprovacao = "Aprovado"
-                    else:
-                        status_aprovacao = "Reprovado"
-                
-                # Campos de notas para TEORICA/ED
-                disciplina_info.update({
-                    "np1": np1_val if np1_val is not None else "Indefinida",
-                    "np2": np2_val if np2_val is not None else "Indefinida",
-                    "pim_nota": formatar_valor(pim_nota_semestre) if pim_nota_semestre is not None else "Indefinida",
-                    "media_final": media_display,
-                    "faltas": faltas_exibicao,
-                })
-
-                if tipo == 'ED':
-                    disciplina_info['status_conclusao'] = "ED CONCLUIDO" 
-                else: # TEORICA
-                    disciplina_info['status_conclusao'] = status_aprovacao
+            if tipo == 'ED':
+                # EDs não possuem status de aprovação, pois são concluídas com presença.
+                disciplina_info['status_conclusao'] = "ED CONCLUIDO" 
+            else: # TEORICA
+                disciplina_info['status_conclusao'] = status_aprovacao
             
             historico.append(disciplina_info)
 
         conn.close()
         
-        # **ALTERAÇÃO AQUI: INSTRUÇÃO PARA FORMATAR COMO LISTA SIMPLES**
+        # **INSTRUÇÃO DE FORMATAÇÃO DO GEMINI**
         message_for_gemini = (
             "**Instrução de Formatação:** Formate os dados do histórico a seguir em uma lista simples e objetiva, "
             "separando as informações de cada disciplina com um traço (`-`). Use o formato: "
