@@ -26,10 +26,10 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            overflow: hidden; 
+            overflow: hidden;
             
             /* Fundo com a imagem da cidade */
-            background-color: var(--p5-black); 
+            background-color: var(--p5-black);
             /* Caminho da imagem para a pasta static */
             background-image: url('static/background.jpg');
             background-size: cover;
@@ -45,7 +45,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); 
+            background-color: rgba(0, 0, 0, 0.7);
             z-index: 5;
         }
 
@@ -54,7 +54,7 @@
             width: 90%;
             max-width: 400px;
             height: 95%;
-            background-color: var(--p5-red); 
+            background-color: var(--p5-red);
             z-index: 10;
             display: flex;
             flex-direction: column;
@@ -77,14 +77,14 @@
             font-size: 1.8em;
             letter-spacing: 2px;
             text-shadow: 1px 1px 0 var(--p5-red);
-            padding-left: 10px; 
+            padding-left: 10px;
         }
 
         /* --- Estilos do Chat (para quando o login for bem-sucedido) --- */
 
         .chat-display {
             flex-grow: 1;
-            background-color: var(--p5-red); 
+            background-color: var(--p5-red);
             padding: 10px;
             overflow-y: auto;
             border-bottom: 5px solid var(--p5-white);
@@ -93,18 +93,18 @@
         }
         
         .message { margin-bottom: 15px; display: flex; align-items: flex-start; }
-        .bot-icon { 
-            width: 60px; 
-            height: 60px; 
-            background-color: var(--p5-black); 
-            border: 2px solid var(--p5-white); 
-            margin-right: 10px; 
-            flex-shrink: 0; 
+        .bot-icon {
+            width: 60px;
+            height: 60px;
+            background-color: var(--p5-black);
+            border: 2px solid var(--p5-white);
+            margin-right: 10px;
+            flex-shrink: 0;
             /* Caminho da imagem para a pasta static */
             background-image: url('static/joker_icon.png');
-            background-size: cover; 
-            filter: grayscale(100%); 
-            clip-path: polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%); 
+            background-size: cover;
+            filter: grayscale(100%);
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%);
         }
         .bot-text { background-color: var(--p5-black); color: var(--p5-white); padding: 8px 15px; max-width: 70%; font-size: 1em; clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%); position: relative; white-space: pre-wrap; }
         .message.user { justify-content: flex-end; }
@@ -112,7 +112,7 @@
         
         .chat-input {
             padding: 10px;
-            background-color: var(--p5-red); 
+            background-color: var(--p5-red);
             border-top: 5px solid var(--p5-white);
             display: none; /* Escondido inicialmente */
             justify-content: space-between;
@@ -209,7 +209,7 @@
             text-decoration: none; /* Remove o sublinhado */
             cursor: pointer;
             /* Recorte P5 Style */
-            clip-path: polygon(0 0, 100% 0, 100% 80%, 75% 100%, 0 100%); 
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 75% 100%, 0 100%);
             transition: background-color 0.1s, color 0.1s;
         }
 
@@ -249,8 +249,10 @@
                 <div id="professor-fields" style="display:none;">
                     <label for="funcional">Funcional (RA):</label>
                     <input type="text" id="funcional" name="funcional" placeholder="Seu RA de Professor">
+                    
                     <label for="codigo-seguranca">Código de Segurança (Fixo: 010101):</label>
-                    <input type="text" id="codigo-seguranca" name="codigo_seguranca" placeholder="Código de 6 dígitos">
+                    <input type="password" id="codigo-seguranca" name="codigo_seguranca" placeholder="Código de 6 dígitos"> 
+                    
                     <label for="senha-professor">Senha do Professor (Fixo: professorsenha):</label>
                     <input type="password" id="senha-professor" name="senha_professor" placeholder="Senha">
                 </div>
@@ -273,8 +275,8 @@
         GUIA RÁPIDO
     </a>
     <script>
-        // ALTERADO: URL da API para o Render
-        const API_BASE_URL = 'chatbot-educacional-joker-production.up.railway.app';
+        // CRÍTICO CORRIGIDO: URL da API agora aponta para o domínio público do Railway
+        const API_BASE_URL = 'https://chatbot-educacional-joker-production.up.railway.app/';
         
         // --- Referências DOM ---
         const chatDisplay = document.getElementById('chat-display');
@@ -316,7 +318,7 @@
 
         loginForm.addEventListener('submit', async (e) => {
             // ESSENCIAL: Evita que o formulário recarregue a página
-            e.preventDefault(); 
+            e.preventDefault();
             
             loginStatus.textContent = 'Autenticando...';
             
@@ -330,7 +332,7 @@
                 // Validação feita pelo JavaScript
                 if (!payload.ra || !payload.senha) {
                     loginStatus.textContent = "Aluno: RA e Senha são obrigatórios.";
-                    return; 
+                    return;
                 }
 
             } else {
@@ -342,18 +344,18 @@
                 // Validação feita pelo JavaScript
                 if (!payload.funcional || !payload.codigo_seguranca || !payload.senha) {
                     loginStatus.textContent = "Professor: Funcional, Código e Senha são obrigatórios.";
-                    return; 
+                    return;
                 }
                 
                 if (payload.codigo_seguranca.length !== 6) {
                     loginStatus.textContent = "Professor: O Código de Segurança deve ter 6 dígitos.";
-                    return; 
+                    return;
                 }
             }
             
             // --- CHAMA O ENDPOINT /login DO PYTHON ---
             try {
-                const response = await fetch(`${API_BASE_URL}/login`, {
+                const response = await fetch(`${API_BASE_URL}login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -369,7 +371,7 @@
                     chatDisplay.style.display = 'flex';
                     document.querySelector('.chat-input').style.display = 'flex';
                     
-                    const welcomeMsg = loggedUser.tipo_usuario === 'professor' 
+                    const welcomeMsg = loggedUser.tipo_usuario === 'professor'
                         ? `Professor ${loggedUser.nome}, seja bem-vindo(a). Suas permissões de **LANÇAMENTO E CONSULTA** estão ativas. O que faremos hoje?`
                         : `Bem-vindo(a) ${loggedUser.nome}. Diga seu **RA** para ver seu Histórico ou o **Tópico** para gerar Material de Estudo.`;
                     
@@ -383,6 +385,7 @@
 
             } catch (error) {
                 console.error('Erro de rede ao logar:', error);
+                // ESTA MENSAGEM SÓ APARECE SE O SERVIDOR ESTIVER PARADO OU A URL ESTIVER ERRADA
                 loginStatus.textContent = "Falha na conexão com o servidor. Verifique a URL e o Back-end.";
             }
         });
@@ -394,9 +397,10 @@
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', sender);
 
+            // CORRIGIDO: Garante que a tag <strong> seja fechada
             const formattedText = text
                 .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); 
 
             if (sender === 'bot') {
                 messageDiv.innerHTML = `
@@ -431,16 +435,16 @@
 
         async function processUserMessage(message) {
             // Envia o tipo_usuario logado para o Python controlar as permissões
-            const payload = { 
-                message: message, 
+            const payload = {
+                message: message,
                 tipo_usuario: loggedUser.tipo_usuario
             };
 
             showLoading();
             
             try {
-                // CORRIGIDO: Rota alterada para /web_router (para corresponder ao app.py)
-                const response = await fetch(`${API_BASE_URL}/web_router`, {
+                // Rota unificada para o chat
+                const response = await fetch(`${API_BASE_URL}web_router`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -448,8 +452,8 @@
 
                 const data = await response.json();
                 
-                // CORRIGIDO: O /web_router sempre retorna a resposta do Joker na chave 'message' com status 200
-                if (response.status === 200) { 
+                // O /web_router sempre retorna a resposta do Joker na chave 'message' com status 200
+                if (response.status === 200) {
                     return data.message;
                 } else {
                     // Trata erros de rota /web_router (que retornam "error" no JSON)
@@ -495,8 +499,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
