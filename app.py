@@ -855,7 +855,7 @@ def serve_static(filename):
     """
     # A rota raiz (/) e a rota /login já estão mapeadas.
     # Esta rota captura qualquer outra URL e tenta servi-la do diretório estático.
-    if filename == 'index.html':
+    if filename == 'joker_bot.html':
         return send_file(filename)
     return send_file(filename)
 
@@ -865,7 +865,7 @@ def index():
     """
     Rota da página inicial.
     """
-    return send_file('index.html')
+    return send_file('joker_bot.html')
 
 
 if __name__ == '__main__':
@@ -873,3 +873,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     # Note que no Railway, a inicialização do DB é feita na primeira requisição para garantir que as variáveis de ambiente do DB estejam prontas.
     app.run(host='0.0.0.0', port=port, debug=False)
+
