@@ -454,37 +454,32 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
             faltas_val = reg['faltas'] if reg['faltas'] is not None else None
             pim_nota_semestre = _get_pim_nota(conn, cursor, id_aluno, reg['semestre']) # Retorna float ou None
             
-            # Recalcula a média se for TEORICA/ED e estiver faltando (depende de NP1, NP2 e PIM)
-            # A média salva no DB (Media_Final) para EDs é 6.0 na inicialização (conforme script SQL)
+            # Recalcula a média se for TEORICA/ED (é o comportamento desejado)
             calculated_media = calcular_media_final(reg['np1'], reg['np2'], pim_nota_semestre)
             media_display = formatar_valor(calculated_media) if calculated_media is not None else "Indefinida"
             
             faltas_exibicao = faltas_val if faltas_val is not None else "N/A"
             
+            # Estrutura base para o JSON de retorno
             disciplina_info = {
                 "semestre": reg['semestre'],
                 "disciplina": reg['nome_disciplina'],
-                "tipo": tipo, # Adicionado para clareza na tabela
-                "np1": np1_val if np1_val is not None else "N/A",
-                "np2": np2_val if np2_val is not None else "N/A",
-                "pim_nota": formatar_valor(pim_nota_semestre) if pim_nota_semestre is not None else "N/A",
-                "media_final": media_display,
-                "faltas": faltas_exibicao,
+                "tipo": tipo,
             }
 
             if tipo == 'PIM':
-                # PIM: Não tem NP1/NP2, a nota é a média
+                # PIM: Não tem NP1/NP2, a nota é a média_final do registro
                 disciplina_info.update({
                     "np1": "N/A",
                     "np2": "N/A",
-                    "pim_nota": formatar_valor(reg['media_final']) if reg['media_final'] is not None else "N/A",
-                    "media_final": "N/A", # Não exibe Média Final para PIM
+                    "pim_nota": formatar_valor(reg['media_final']) if reg['media_final'] is not None else "Indefinida",
+                    "media_final": "N/A",
                     "faltas": "N/A",
                     "status_conclusao": "Nota de trabalho"
                 })
             else: # TEORICA e ED
                 
-                # Lógica de Status (Válida para o display da média, mas a aprovação de ED é fixa)
+                # Lógica de Status
                 media_float = float(media_display) if media_display and media_display != "Indefinida" else None
                 status_aprovacao = "Indefinido"
 
@@ -493,9 +488,17 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
                         status_aprovacao = "Aprovado"
                     else:
                         status_aprovacao = "Reprovado"
+                
+                # Campos de notas para TEORICA/ED
+                disciplina_info.update({
+                    "np1": np1_val if np1_val is not None else "Indefinida",
+                    "np2": np2_val if np2_val is not None else "Indefinida",
+                    "pim_nota": formatar_valor(pim_nota_semestre) if pim_nota_semestre is not None else "Indefinida",
+                    "media_final": media_display,
+                    "faltas": faltas_exibicao,
+                })
 
                 if tipo == 'ED':
-                    # **ALTERAÇÃO 1: Média calculada, status fixo, conforme pedido.**
                     disciplina_info['status_conclusao'] = "ED CONCLUIDO" 
                 else: # TEORICA
                     disciplina_info['status_conclusao'] = status_aprovacao
@@ -504,12 +507,12 @@ def verificar_dados_curso_api(ra_aluno: str) -> dict:
 
         conn.close()
         
-        # **ALTERAÇÃO 2: Adiciona instrução para gerar a tabela simples**
+        # **ALTERAÇÃO AQUI: INSTRUÇÃO PARA FORMATAR COMO LISTA SIMPLES**
         message_for_gemini = (
-            "**Instrução de Formatação:** Formate os dados do histórico a seguir em uma tabela simples "
-            "e objetiva (Markdown), incluindo as colunas: Disciplina, Tipo, NP1, NP2, PIM, Média Final, Faltas e Status. "
-            f"Use o Status 'ED CONCLUIDO' para 'ED'. Aluno(a): {registros[0]['nome_completo']} (RA: {ra_aluno}). "
-            f"Nota de corte para aprovação: **{NOTA_CORTE_APROVACAO:.1f}**."
+            "**Instrução de Formatação:** Formate os dados do histórico a seguir em uma lista simples e objetiva, "
+            "separando as informações de cada disciplina com um traço (`-`). Use o formato: "
+            "**Disciplina: NP1: X / NP2: Y / PIM: Z / Média final: M / Status: S**."
+            f"Aluno(a): {registros[0]['nome_completo']} (RA: {ra_aluno})."
         )
 
         return {
