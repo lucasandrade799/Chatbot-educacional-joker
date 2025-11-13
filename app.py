@@ -68,7 +68,7 @@ INSERT INTO Disciplinas (Nome_Disciplina, Semestre, Tipo_Avaliacao) VALUES
 ('Redes de Computadores', 1, 'ED'), 
 ('Comunicação Empresarial', 1, 'ED'), 
 ('Ética e Cidadania', 1, 'ED'), 
-('PIM I', 1, 'PIM'), 
+('PIM Semestre 1', 1, 'PIM'), 
 ('Estruturas de Dados', 2, 'TEORICA'),
 ('Banco de Dados I', 2, 'TEORICA'), 
 ('Sistemas Operacionais', 2, 'TEORICA'), 
@@ -77,7 +77,7 @@ INSERT INTO Disciplinas (Nome_Disciplina, Semestre, Tipo_Avaliacao) VALUES
 ('Gestão de Projetos', 2, 'ED'), 
 ('Análise de Sistemas', 2, 'ED'), 
 ('Tópicos Avançados', 2, 'ED'),
-('PIM II', 2, 'PIM')
+('PIM Semestre 2', 2, 'PIM')
 ON CONFLICT (Nome_Disciplina, Semestre) DO NOTHING;
 
 -- POPULANDO A TABELA ALUNOS
@@ -760,3 +760,4 @@ def index():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
