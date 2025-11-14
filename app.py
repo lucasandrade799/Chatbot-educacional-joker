@@ -155,7 +155,8 @@ def get_db_connection():
         
     try:
         conn = psycopg2.connect(DATABASE_URL)
-        return conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        # Usamos o RealDictCursor para retornar resultados como dicionários (keys são nomes das colunas)
+        return conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) 
     except Psycopg2Error as e:
         raise Exception(f"ERRO DE CONEXÃO AO POSTGRESQL: Não foi possível conectar ao DB. Detalhe: {e}")
     except Exception as e:
@@ -560,19 +561,16 @@ def buscar_material_estudo_api(topico: str) -> dict:
     )
 
     try:
-        # A ferramenta google_search será usada implicitamente pela instrução 'Busque na web'
-        # quando a ferramenta google_search é habilitada no roteador.
+        # Nota: O prompt de busca é forte o suficiente para que o Gemini use o Grounding.
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            # Remoção da config interna para que a chamada se comporte como uma função comum
         )
 
-        # CORREÇÃO: Usando 'resultado' para garantir que o Gemini exiba o texto.
         return {
             "status": "success",
             "topico": topico,
-            "resultado": response.text
+            "resultado": response.text # <--- Retorna a chave 'resultado'
         }
 
     except APIError as e:
@@ -627,21 +625,19 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
         "Em caso de dados faltantes (ex: RA), peça-os. \n\n"
     ).format(mensagem_usuario)
 
-    # 2. Envia a mensagem com as ferramentas FILTRADAS e google_search habilitado (Grounding)
+    # 2. Envia a mensagem com as ferramentas FILTRADAS (APENAS FUNCTIONS)
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=[prompt_ferramenta],
             config=GenerateContentConfig(
-                # Adiciona google_search para o grounding, essencial para 'buscar_material_estudo_api'
-                tools=[
-                    {"google_search": {}} 
-                ] + ferramentas_permitidas # Junta google_search com as funções
+                # CORREÇÃO CRÍTICA: Não misturar Function Calling com google_search explícito.
+                tools=ferramentas_permitidas
             )
         )
     except Exception as e:
-        print(f"Erro na chamada do Gemini: {e}")
-        return "❌ Erro ao processar a requisição com o Gemini. Tente novamente."
+        print(f"*** ERRO DETALHADO DO GEMINI (ROTEADOR) ***: {e}")
+        return "❌ Erro ao processar a requisição com o Gemini. Tente novamente. Verifique os logs do servidor para detalhes."
 
 
     # 3. Verifica se o Gemini decidiu chamar uma função
@@ -665,7 +661,7 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
                 genai.types.Part.from_function_response(
                     name=func_name,
                     # CORREÇÃO ESSENCIAL: Para 'buscar_material_estudo_api', enviamos APENAS a chave 'resultado'
-                    # para garantir que o Gemini exiba o conteúdo puro, e não o JSON completo da função.
+                    # para garantir que o Gemini exiba o conteúdo puro e não o JSON completo da função.
                     response={"resultado": function_response_data.get("resultado")}
                     if func_name == 'buscar_material_estudo_api'
                     else function_response_data
