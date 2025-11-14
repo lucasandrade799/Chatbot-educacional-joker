@@ -560,24 +560,26 @@ def buscar_material_estudo_api(topico: str) -> dict:
     )
 
     try:
-        # A ferramenta google_search será habilitada na chamada externa do roteador.
-        # Aqui, apenas geramos o conteúdo com o prompt detalhado.
+        # A ferramenta google_search será usada implicitamente pela instrução 'Busque na web'
+        # quando a ferramenta google_search é habilitada no roteador.
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            # REMOVEMOS: config=GenerateContentConfig(tools=[{"google_search": {}}])
+            # Remoção da config interna para que a chamada se comporte como uma função comum
         )
 
+        # CORREÇÃO: Usando 'resultado' para garantir que o Gemini exiba o texto.
         return {
             "status": "success",
             "topico": topico,
-            "resultado": response.text # <--- Agora é um campo 'resultado' simples
+            "resultado": response.text
         }
 
     except APIError as e:
         return {"status": "error", "message": f"Erro na API do Gemini: {e}"}
     except Exception as e:
         return {"status": "error", "message": f"Ocorreu um erro inesperado ao gerar o conteúdo: {e}"}
+
 # --- 4. CONFIGURAÇÃO DE FUNÇÕES (TOOLS) E ROUTER DE CONTEÚDO ---
 
 # Mapeamento das ferramentas
@@ -595,11 +597,11 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
     if not client:
         return "❌ Desculpe, a conexão com a inteligência artificial está temporariamente indisponível."
 
-    # 1. CONTROLE DE PERMISSÃO
+    # 1. CONTROLE DE PERMISSÃO E PERSONALIDADE (JOKER P5 EXCLUSIVO)
     if tipo_usuario.upper() == 'PROFESSOR':
         ferramentas_permitidas = list(TOOLS.values()) 
         instrucoes_perfil = (
-            "Você é um assistente acadêmico para um **Professor**. Responda com um tom sarcástico, mas sempre respeitoso e informativo, usando a personalidade do 'Joker' (Persona 5). "
+            "Você é um assistente acadêmico para um **Professor**. Responda com um tom sarcástico, mas sempre respeitoso e informativo, usando a personalidade de **Akira Kurusu/Ren Amamiya, o 'Joker' dos Phantom Thieves de Persona 5**. Sua personalidade é a de um líder silencioso e confiante, que encoraja o usuário com frases como **'Take your time'** (Aproveite o seu tempo). Você **NÃO é o Coringa vilão da DC Comics**. "
             "Suas principais tarefas são: 1. Ajudar o professor a visualizar dados acadêmicos. 2. Gerar material de estudo. 3. **Lançar notas (NP1, NP2, PIM) e faltas no sistema.** OBS: O status de conclusão da ED é fixo como 'ED CONCLUIDO' e a média é sempre calculada. A nota de corte para aprovação é 7.0."
         )
     else: # Aluno
@@ -608,7 +610,7 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
             TOOLS['gerar_material_estudo']
         ]
         instrucoes_perfil = (
-            "Você é um assistente acadêmico para um **Aluno**. Responda com um tom sarcástico, mas sempre informativo, usando a personalidade do 'Joker'(Persona 5). "
+            "Você é um assistente acadêmico para um **Aluno**. Responda com um tom sarcástico, mas sempre informativo, usando a personalidade de **Akira Kurusu/Ren Amamiya, o 'Joker' dos Phantom Thieves de Persona 5**. Sua personalidade é a de um líder silencioso e confiante, que encoraja o usuário com frases como **'Take your time'** (Aproveite o seu tempo). Você **NÃO é o Coringa vilão da DC Comics**. "
             "Suas principais tarefas são: 1. Ajudar o aluno a verificar o próprio histórico. 2. Gerar material de estudo. **(Você NÃO pode lançar ou alterar notas.)** A nota de corte para aprovação é 7.0."
         )
         
@@ -625,12 +627,17 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
         "Em caso de dados faltantes (ex: RA), peça-os. \n\n"
     ).format(mensagem_usuario)
 
-    # 2. Envia a mensagem com as ferramentas FILTRADAS para o Gemini
+    # 2. Envia a mensagem com as ferramentas FILTRADAS e google_search habilitado (Grounding)
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=[prompt_ferramenta],
-            config=GenerateContentConfig(tools=ferramentas_permitidas)
+            config=GenerateContentConfig(
+                # Adiciona google_search para o grounding, essencial para 'buscar_material_estudo_api'
+                tools=[
+                    {"google_search": {}} 
+                ] + ferramentas_permitidas # Junta google_search com as funções
+            )
         )
     except Exception as e:
         print(f"Erro na chamada do Gemini: {e}")
@@ -653,13 +660,12 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
                 return f"Joker: Oops! {function_response_data['message']}"
 
             # 5. Envia o resultado da execução de volta ao Gemini
-# 5. Envia o resultado da execução de volta ao Gemini
             segundo_prompt = [
                 response,
                 genai.types.Part.from_function_response(
                     name=func_name,
-                    # Para 'buscar_material_estudo_api', enviamos APENAS a chave 'resultado'
-                    # para evitar que o Gemini adicione o JSON de status e topico na resposta final.
+                    # CORREÇÃO ESSENCIAL: Para 'buscar_material_estudo_api', enviamos APENAS a chave 'resultado'
+                    # para garantir que o Gemini exiba o conteúdo puro, e não o JSON completo da função.
                     response={"resultado": function_response_data.get("resultado")}
                     if func_name == 'buscar_material_estudo_api'
                     else function_response_data
@@ -783,4 +789,3 @@ def index():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
-
