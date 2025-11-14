@@ -560,24 +560,24 @@ def buscar_material_estudo_api(topico: str) -> dict:
     )
 
     try:
+        # A ferramenta google_search será habilitada na chamada externa do roteador.
+        # Aqui, apenas geramos o conteúdo com o prompt detalhado.
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            config=GenerateContentConfig(tools=[{"google_search": {}}])
+            # REMOVEMOS: config=GenerateContentConfig(tools=[{"google_search": {}}])
         )
 
-        # CORREÇÃO: Usando 'resultado' para garantir que o Gemini exiba o texto.
         return {
             "status": "success",
             "topico": topico,
-            "resultado": response.text
+            "resultado": response.text # <--- Agora é um campo 'resultado' simples
         }
 
     except APIError as e:
         return {"status": "error", "message": f"Erro na API do Gemini: {e}"}
     except Exception as e:
         return {"status": "error", "message": f"Ocorreu um erro inesperado ao gerar o conteúdo: {e}"}
-
 # --- 4. CONFIGURAÇÃO DE FUNÇÕES (TOOLS) E ROUTER DE CONTEÚDO ---
 
 # Mapeamento das ferramentas
@@ -653,11 +653,16 @@ def rotear_e_executar_mensagem(mensagem_usuario: str, tipo_usuario: str) -> str:
                 return f"Joker: Oops! {function_response_data['message']}"
 
             # 5. Envia o resultado da execução de volta ao Gemini
+# 5. Envia o resultado da execução de volta ao Gemini
             segundo_prompt = [
                 response,
                 genai.types.Part.from_function_response(
                     name=func_name,
-                    response=function_response_data
+                    # Para 'buscar_material_estudo_api', enviamos APENAS a chave 'resultado'
+                    # para evitar que o Gemini adicione o JSON de status e topico na resposta final.
+                    response={"resultado": function_response_data.get("resultado")}
+                    if func_name == 'buscar_material_estudo_api'
+                    else function_response_data
                 )
             ]
 
@@ -778,3 +783,4 @@ def index():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
