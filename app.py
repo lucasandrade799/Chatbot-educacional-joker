@@ -9,6 +9,7 @@ from google import genai
 from google.genai.errors import APIError
 from google.genai.types import GenerateContentConfig
 from flask import Flask, request, jsonify, send_file
+# Adicionado import para Twilio/WhatsApp Webhook
 from twilio.twiml.messaging_response import MessagingResponse
 from flask_cors import CORS
 
@@ -145,6 +146,7 @@ def init_db():
         print(f"❌ ERRO GRAVE na inicialização do banco de dados (PostgreSQL): {e}")
         return False    
     finally:
+        # Garante que a conexão seja fechada
         if conn:
             conn.close()
 
@@ -734,7 +736,7 @@ def handle_login():
 
 @app.route('/web_router', methods=['POST'])
 def web_router():
-    """Rota unificada para receber mensagens do chat e rotear para o Gemini/DB."""
+    """Rota unificada para receber mensagens do chat web e rotear para o Gemini/DB."""
     global DB_INITIALIZED
     if not DB_INITIALIZED:
         if init_db():
@@ -761,17 +763,44 @@ def web_router():
         return jsonify({"error": f"Erro interno no roteador: {e}"}), 500
 
 
+@app.route('/webhook', methods=['POST'])
+def webhook_whatsapp():
+    """Webhook para receber mensagens do Twilio (WhatsApp)."""
+    global DB_INITIALIZED
+    if not DB_INITIALIZED:
+        if init_db():
+            DB_INITIALIZED = True
+        else:
+            return MessagingResponse().message("Serviço indisponível. Falha na inicialização do banco de dados.").to_xml(), 503
+
+    try:
+        # O Twilio envia os dados como form-data
+        incoming_msg = request.values.get('Body', '').strip()
+        # Aqui você faria a lógica de autenticação do WhatsApp para definir o tipo_usuario
+        # Para simplificar, assumimos 'Aluno' por padrão para a demonstração
+        tipo_usuario_wa = 'aluno'
+        
+        response_text = rotear_e_executar_mensagem(incoming_msg, tipo_usuario_wa)
+
+        # Formata a resposta para o Twilio
+        resp = MessagingResponse()
+        resp.message(response_text)
+        return str(resp), 200
+
+    except Exception as e:
+        print(f"Erro no webhook do WhatsApp: {e}")
+        return MessagingResponse().message(f"Ocorreu um erro no processamento: {e}").to_xml(), 500
+
+
 @app.route('/<path:filename>')
 def serve_static(filename):
     """Serve arquivos estáticos (CSS, JS, imagens) localizados na pasta 'static'."""
-    if filename == 'joker_bot.html':
-        return send_file(filename)
     return send_file(filename)
 
 
 @app.route('/')
 def index():
-    """Rota da página inicial."""
+    """Rota da página inicial e de arquivos estáticos."""
     return send_file('joker_bot.html')
 
 
